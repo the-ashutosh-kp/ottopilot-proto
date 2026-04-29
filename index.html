@@ -66,8 +66,8 @@
   .timeline-rail::before {
     content: ''; position: absolute; left: 14px; top: 0; bottom: 0; width: 2px; background: #e2e8f0;
   }
-  /* Toast */
-  .toast { transform: translate(-50%, 200%); transition: transform .3s cubic-bezier(.2,.8,.3,1); }
+  /* Toast — positioned top, away from bottom nav */
+  .toast { transform: translate(-50%, -200%); transition: transform .25s cubic-bezier(.2,.8,.3,1); pointer-events: none; }
   .toast.show { transform: translate(-50%, 0); }
   /* Skeleton shimmer */
   @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
@@ -135,124 +135,513 @@
              SCREEN 1 — Customers list
              ============================================================ -->
         <section data-screen="customers" class="active">
-          <!-- Filter pills row -->
-          <div class="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 248</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Active</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Churned</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Converted</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Lost</button>
-          </div>
 
-          <!-- Sort + filter bar -->
-          <div class="px-4 pt-1 pb-3 flex items-center justify-between text-xs">
-            <button class="flex items-center gap-1 text-slate-600">
-              <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i> Last activity
+          <!-- 1. Scope + sync -->
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <button id="open-scope" class="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-lg active:bg-slate-100">
+              <span class="text-[10px] uppercase tracking-wide text-slate-500 font-medium">Scope</span>
+              <span id="scope-label" class="text-sm font-semibold text-slate-900">My customers</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
             </button>
-            <button id="open-filter" class="flex items-center gap-1 text-slate-600">
-              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filters
-              <span class="ml-1 px-1.5 py-0.5 bg-brand-100 text-brand-700 rounded-full text-[10px] font-medium">2</span>
+            <button class="flex items-center gap-1.5 text-[10px] text-slate-500" onclick="showToast('Pulling latest…')">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Synced 2m ago</span>
             </button>
           </div>
 
-          <!-- Customer rows -->
-          <ul class="px-4 pb-24 space-y-2">
-            <!-- Card 1 -->
-            <li>
-              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5 active:bg-slate-50 transition">
+          <!-- 2. Stat hero -->
+          <div class="px-4 pb-2 grid grid-cols-3 gap-2">
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-slate-900" id="scope-total">248</div>
+              <div class="text-[10px] text-slate-500">Active in book</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-violet-700">42</div>
+              <div class="text-[10px] text-slate-500">High intent</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-amber-700">8</div>
+              <div class="text-[10px] text-slate-500">Stale 5d+</div>
+            </div>
+          </div>
+
+          <!-- 3. Search -->
+          <div class="px-4 pb-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input type="search" placeholder="Search by name, phone, ID…" class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" />
+            </div>
+          </div>
+
+          <!-- 4. Saved views -->
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap flex items-center gap-1"><i data-lucide="star" class="w-3 h-3"></i> All mine · 248</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> High intent · 42</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> Today's calls · 14</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="alarm-clock" class="w-3 h-3"></i> Follow-up due · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="moon" class="w-3 h-3"></i> Stale · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Save current</button>
+          </div>
+
+          <!-- 5. View switcher + secondary toolbar -->
+          <div class="px-4 pb-2 flex items-center justify-between" data-view-switcher="customers">
+            <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+              <button data-view-mode="list" class="px-2.5 py-1 rounded-md bg-white shadow-sm text-xs font-medium text-slate-900">List</button>
+              <button data-view-mode="table" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Table</button>
+              <button data-view-mode="kanban" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Kanban</button>
+            </div>
+            <div class="flex items-center gap-0.5">
+              <button class="p-1.5 rounded-lg hover:bg-slate-100" aria-label="Sort"><i data-lucide="arrow-up-down" class="w-4 h-4 text-slate-600"></i></button>
+              <button id="open-filter" class="p-1.5 rounded-lg hover:bg-slate-100 relative" aria-label="Filter">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4 text-slate-600"></i>
+                <span class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-brand-600 text-white text-[9px] font-medium grid place-items-center">2</span>
+              </button>
+              <button onclick="showToast('Export · Columns · Density')" class="p-1.5 rounded-lg hover:bg-slate-100" aria-label="More"><i data-lucide="more-vertical" class="w-4 h-4 text-slate-600"></i></button>
+            </div>
+          </div>
+
+          <!-- 6. Result count + Select -->
+          <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500">Showing <span class="font-medium text-slate-700">10</span> of <span class="font-medium text-slate-700">248</span></span>
+            <button id="toggle-select" class="text-brand-600 font-medium">Select</button>
+          </div>
+
+          <!-- 7. LIST view -->
+          <div data-view-panel="list" data-view-switcher-target="customers">
+            <ul class="px-4 space-y-2" id="customers-list">
+              <!-- Each card has a checkbox shown only in select mode + drill href -->
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold">AK</div>
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold flex-none">AK</div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
                       <div class="font-medium text-slate-900 truncate">Akash Kumar</div>
-                      <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                      <span class="pill bg-violet-50 text-violet-700">High</span>
                     </div>
-                    <div class="text-xs text-slate-500 truncate">+91 9876543210 · Hero Cycles</div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 98765 43210 · Hero · Naresh N.</div>
                   </div>
                 </div>
-                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 3 journeys</span>
-                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 12 Apr · 12:30 pm</span>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3 h-3"></i> 3 journeys</span>
+                  <span>2h ago</span>
+                  <span class="font-semibold text-emerald-700">₹ 1,24,500</span>
                 </div>
-              </a>
-            </li>
-
-            <li>
-              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center font-semibold">RP</div>
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold flex-none">SK</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Suresh Kumar</div>
+                      <span class="pill bg-emerald-50 text-emerald-700">Score 92</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 98768 21345 · Hero · Naresh N.</div>
+                  </div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Lead · Website</span>
+                  <span>12 min ago</span>
+                  <span>—</span>
+                </div>
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 grid place-items-center font-semibold flex-none">DM</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Deepa Mahadevan</div>
+                      <span class="pill bg-sky-50 text-sky-700">Qualified</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 91111 22221 · CK · Sanjay G.</div>
+                  </div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3 h-3"></i> 1 journey</span>
+                  <span>2h ago</span>
+                  <span>—</span>
+                </div>
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-violet-100 text-violet-700 grid place-items-center font-semibold flex-none">SD</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Sanjay Desai</div>
+                      <span class="pill bg-violet-50 text-violet-700">Customer</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 99887 76655 · States · Sanjay G.</div>
+                  </div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3 h-3"></i> 2 journeys</span>
+                  <span>3d ago</span>
+                  <span class="font-semibold text-emerald-700">₹ 52,000</span>
+                </div>
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center font-semibold flex-none">VR</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Vinay Reddy</div>
+                      <span class="pill bg-amber-50 text-amber-700">Stale 5d</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 99221 33445 · Metro · Arun R.</div>
+                  </div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Lead · Referral</span>
+                  <span>5d ago</span>
+                  <span>—</span>
+                </div>
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-pink-100 text-pink-700 grid place-items-center font-semibold flex-none">MI</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Meera Iyer</div>
+                      <span class="pill bg-pink-50 text-pink-700">Test ride</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 97443 22119 · States · Sanjay G.</div>
+                  </div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="bike" class="w-3 h-3"></i> Ride 14:30</span>
+                  <span>4h ago</span>
+                  <span>—</span>
+                </div>
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center font-semibold flex-none">RP</div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
                       <div class="font-medium text-slate-900 truncate">Rohit Patel</div>
                       <span class="pill bg-amber-50 text-amber-700">Churned</span>
                     </div>
-                    <div class="text-xs text-slate-500 truncate">+91 9123456780 · Metro Cycles</div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 91234 56780 · Metro · Harish D.</div>
                   </div>
                 </div>
-                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 1 journey</span>
-                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 2 Apr · 10:15 am</span>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3 h-3"></i> 1 journey</span>
+                  <span>1d ago</span>
+                  <span>—</span>
                 </div>
-              </a>
-            </li>
-
-            <li>
-              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 grid place-items-center font-semibold">SD</div>
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold flex-none">AV</div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
-                      <div class="font-medium text-slate-900 truncate">Sanjay Desai</div>
-                      <span class="pill bg-violet-50 text-violet-700">Converted</span>
+                      <div class="font-medium text-slate-900 truncate">Anil Verma</div>
+                      <span class="pill bg-amber-50 text-amber-700">New</span>
                     </div>
-                    <div class="text-xs text-slate-500 truncate">+91 9988776655 · States Cycles</div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 98123 67890 · Hero · Naresh N.</div>
                   </div>
                 </div>
-                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 2 journeys</span>
-                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 28 Mar · 04:42 pm</span>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Lead · Website</span>
+                  <span>1h ago</span>
+                  <span>—</span>
                 </div>
-              </a>
-            </li>
-
-            <li>
-              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-700 grid place-items-center font-semibold">PM</div>
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold flex-none">NN</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Naresh Nethaji</div>
+                      <span class="pill bg-violet-50 text-violet-700">Engaged</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 90001 11222 · CK · Harish D.</div>
+                  </div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3 h-3"></i> 4 journeys</span>
+                  <span>18 Mar</span>
+                  <span class="font-semibold text-emerald-700">₹ 84,000</span>
+                </div>
+              </a></li>
+              <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" class="select-only hidden rounded text-brand-600" />
+                  <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-700 grid place-items-center font-semibold flex-none">PM</div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
                       <div class="font-medium text-slate-900 truncate">Priya Mishra</div>
                       <span class="pill bg-rose-50 text-rose-700">Lost</span>
                     </div>
-                    <div class="text-xs text-slate-500 truncate">+91 9765432100 · KKM Showroom</div>
+                    <div class="text-[11px] text-slate-500 truncate">+91 97654 32100 · KKM · Arun R.</div>
                   </div>
                 </div>
-                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 1 journey</span>
-                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 22 Mar · 11:00 am</span>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3 h-3"></i> 1 journey</span>
+                  <span>7d ago</span>
+                  <span>—</span>
                 </div>
-              </a>
-            </li>
+              </a></li>
+            </ul>
+            <div class="px-4 pt-3 pb-24 text-center">
+              <button onclick="showToast('Loading 50 more…')" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 inline-flex items-center gap-1.5">
+                <i data-lucide="chevrons-down" class="w-3.5 h-3.5"></i> Load 50 more · 238 remaining
+              </button>
+            </div>
+          </div>
 
-            <li>
-              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold">NN</div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-2">
-                      <div class="font-medium text-slate-900 truncate">Naresh Nethaji</div>
-                      <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+          <!-- 8. TABLE view -->
+          <div data-view-panel="table" data-view-switcher-target="customers" class="hidden">
+            <div class="px-2 pb-1.5 flex items-center justify-between">
+              <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-slate-500 px-1">Density</span>
+                <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
+                  <button class="px-2 py-0.5 rounded bg-white shadow-sm text-slate-900 text-[10px] font-medium">Compact</button>
+                  <button onclick="showToast('Density: Comfortable')" class="px-2 py-0.5 rounded text-slate-600 text-[10px]">Cozy</button>
+                </div>
+              </div>
+              <button onclick="showToast('Choose visible columns…')" class="text-[11px] text-slate-600 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="columns-3" class="w-3.5 h-3.5"></i> Columns</button>
+            </div>
+            <div class="px-2 pb-2">
+              <div class="bg-white rounded-xl shadow-card overflow-x-auto">
+                <table class="min-w-full text-[11px]">
+                  <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
+                    <tr>
+                      <th class="px-2 py-2 w-7"><input type="checkbox" class="rounded" /></th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Name <i data-lucide="arrow-down" class="inline w-3 h-3 ml-0.5"></i></th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Stage</th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Owner</th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Dealer</th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Last activity</th>
+                      <th class="px-2 py-2 text-right font-medium whitespace-nowrap">Revenue</th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Akash Kumar</a><div class="text-[10px] text-slate-400">+91 98765 43210</div></td><td><span class="pill bg-violet-50 text-violet-700">Engaged</span></td><td>Naresh N.</td><td>Hero</td><td>2h ago</td><td class="text-right font-semibold">₹ 1,24,500</td><td>92</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Suresh Kumar</a><div class="text-[10px] text-slate-400">+91 98768 21345</div></td><td><span class="pill bg-amber-50 text-amber-700">Lead</span></td><td>Naresh N.</td><td>Hero</td><td>12m ago</td><td class="text-right">—</td><td>92</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Deepa Mahadevan</a><div class="text-[10px] text-slate-400">+91 91111 22221</div></td><td><span class="pill bg-sky-50 text-sky-700">Qualified</span></td><td>Sanjay G.</td><td>CK</td><td>2h ago</td><td class="text-right">—</td><td>67</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Sanjay Desai</a><div class="text-[10px] text-slate-400">+91 99887 76655</div></td><td><span class="pill bg-violet-50 text-violet-700">Customer</span></td><td>Sanjay G.</td><td>States</td><td>3d ago</td><td class="text-right font-semibold">₹ 52,000</td><td>78</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Vinay Reddy</a><div class="text-[10px] text-slate-400">+91 99221 33445</div></td><td><span class="pill bg-amber-50 text-amber-700">Stale</span></td><td>Arun R.</td><td>Metro</td><td>5d ago</td><td class="text-right">—</td><td>34</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Meera Iyer</a><div class="text-[10px] text-slate-400">+91 97443 22119</div></td><td><span class="pill bg-pink-50 text-pink-700">Test ride</span></td><td>Sanjay G.</td><td>States</td><td>4h ago</td><td class="text-right">—</td><td>85</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Rohit Patel</a><div class="text-[10px] text-slate-400">+91 91234 56780</div></td><td><span class="pill bg-amber-50 text-amber-700">Churned</span></td><td>Harish D.</td><td>Metro</td><td>1d ago</td><td class="text-right">—</td><td>34</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Anil Verma</a><div class="text-[10px] text-slate-400">+91 98123 67890</div></td><td><span class="pill bg-amber-50 text-amber-700">Lead</span></td><td>Naresh N.</td><td>Hero</td><td>1h ago</td><td class="text-right">—</td><td>78</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Naresh Nethaji</a><div class="text-[10px] text-slate-400">+91 90001 11222</div></td><td><span class="pill bg-violet-50 text-violet-700">Engaged</span></td><td>Harish D.</td><td>CK</td><td>18 Mar</td><td class="text-right font-semibold">₹ 84,000</td><td>71</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Priya Mishra</a><div class="text-[10px] text-slate-400">+91 97654 32100</div></td><td><span class="pill bg-rose-50 text-rose-700">Lost</span></td><td>Arun R.</td><td>KKM</td><td>7d ago</td><td class="text-right">—</td><td>18</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <!-- Pagination footer -->
+              <div class="mt-2 flex items-center justify-between text-[11px] px-1.5">
+                <span class="text-slate-500">Rows
+                  <select class="border border-slate-200 rounded px-1 py-0.5 ml-1">
+                    <option>50</option><option>100</option><option>200</option>
+                  </select>
+                </span>
+                <div class="flex items-center gap-2 text-slate-700">
+                  <span>1–10 of 248</span>
+                  <button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-500"></i></button>
+                  <button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-700"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="h-24"></div>
+          </div>
+
+          <!-- 9. KANBAN view -->
+          <div data-view-panel="kanban" data-view-switcher-target="customers" class="hidden">
+            <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-500">Group by</span>
+                <select class="border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                  <option>Lifecycle stage</option>
+                  <option>Owner</option>
+                  <option>Dealer</option>
+                  <option>Source</option>
+                </select>
+              </div>
+              <button onclick="showToast('Swimlanes: by Owner')" class="flex items-center gap-1 text-slate-600 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="rows-3" class="w-3.5 h-3.5"></i> Swimlanes</button>
+            </div>
+            <div class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-24 snap-x snap-mandatory">
+              <!-- Lead -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="pill bg-amber-50 text-amber-700">Lead</span>
+                    <span class="text-[11px] text-slate-500">42 / 100</span>
+                  </div>
+                  <button onclick="showToast('Add to Lead column')" class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-amber-400 rounded-full" style="width:42%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">SK</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Suresh Kumar</span>
+                      <span class="ml-auto pill bg-emerald-50 text-emerald-700 text-[9px]">92</span>
                     </div>
-                    <div class="text-xs text-slate-500 truncate">+91 9000111222 · CK Showroom</div>
+                    <div class="text-[10px] text-slate-500 flex items-center gap-1.5"><span>Hero · Naresh N.</span></div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">12 min ago · Website</div>
+                  </a>
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">AV</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Anil Verma</span>
+                      <span class="ml-auto pill bg-amber-50 text-amber-700 text-[9px]">78</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">Hero · Naresh N.</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">1h ago · Website</div>
+                  </a>
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card opacity-90">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 grid place-items-center text-[10px] font-semibold">VR</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Vinay Reddy</span>
+                      <span class="ml-auto pill bg-rose-50 text-rose-700 text-[9px]">Stale</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">Metro · Arun R.</div>
+                    <div class="text-[10px] text-amber-700 mt-0.5">5d ago · No response</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>42 leads</span>
+                  <span class="font-medium">~₹ 28.4 L pipeline</span>
+                </div>
+              </div>
+
+              <!-- Qualified -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="pill bg-sky-50 text-sky-700">Qualified</span>
+                    <span class="text-[11px] text-slate-500">28 / 80</span>
+                  </div>
+                  <button class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-sky-500 rounded-full" style="width:35%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-[10px] font-semibold">DM</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Deepa Mahadevan</span>
+                      <span class="ml-auto pill bg-sky-50 text-sky-700 text-[9px]">67</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">CK · Sanjay G.</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">2h ago · Walk-in</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>28 qualified</span>
+                  <span class="font-medium">~₹ 19.6 L</span>
+                </div>
+              </div>
+
+              <!-- Engaged -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="pill bg-violet-50 text-violet-700">Engaged</span>
+                    <span class="text-[11px] text-slate-500">17 / 50</span>
+                  </div>
+                  <button class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-violet-500 rounded-full" style="width:34%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card ring-2 ring-violet-200">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">AK</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Akash Kumar</span>
+                      <span class="ml-auto pill bg-violet-50 text-violet-700 text-[9px]">High</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">Hero · Naresh N.</div>
+                    <div class="text-[10px] text-emerald-700 mt-0.5">2h ago · Wants test ride</div>
+                  </a>
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">NN</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Naresh Nethaji</span>
+                      <span class="ml-auto pill bg-emerald-50 text-emerald-700 text-[9px]">71</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">CK · Harish D.</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">18 Mar · Repeat</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>17 engaged</span>
+                  <span class="font-medium">~₹ 14.2 L</span>
+                </div>
+              </div>
+
+              <!-- Test ride -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="pill bg-pink-50 text-pink-700">Test ride</span>
+                    <span class="text-[11px] text-slate-500">8 / 30</span>
+                  </div>
+                  <button class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-pink-500 rounded-full" style="width:27%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-pink-100 text-pink-700 grid place-items-center text-[10px] font-semibold">MI</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Meera Iyer</span>
+                      <span class="ml-auto pill bg-pink-50 text-pink-700 text-[9px]">85</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">States · Sanjay G.</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Today 14:30 · Lectro EHX</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>8 in test ride</span>
+                  <span class="font-medium">~₹ 5.4 L</span>
+                </div>
+              </div>
+
+              <!-- Customer -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="pill bg-emerald-50 text-emerald-700">Customer</span>
+                    <span class="text-[11px] text-slate-500">2 closed</span>
                   </div>
                 </div>
-                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 4 journeys</span>
-                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 18 Mar · 09:20 am</span>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1">
+                      <div class="w-6 h-6 rounded-full bg-violet-100 text-violet-700 grid place-items-center text-[10px] font-semibold">SD</div>
+                      <span class="text-sm font-medium text-slate-900 truncate">Sanjay Desai</span>
+                      <span class="ml-auto text-[10px] font-semibold text-emerald-700">₹ 52k</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500">States · Sanjay G.</div>
+                    <div class="text-[10px] text-emerald-700 mt-0.5">3d · Lectro EHX</div>
+                  </a>
                 </div>
-              </a>
-            </li>
-          </ul>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>2 closed</span>
+                  <span class="font-medium text-emerald-700">₹ 1.0 L total</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10. Bulk action bar (hidden, shown in select mode) -->
+          <div id="bulk-bar" class="hidden absolute left-3 right-3 bottom-20 z-30 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center gap-1 px-3 py-2.5">
+            <button id="bulk-clear" class="p-1 rounded hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+            <span class="text-xs"><span id="bulk-count">0</span> selected</span>
+            <div class="flex-1"></div>
+            <button onclick="showToast('Reassign to…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="user-cog" class="w-3.5 h-3.5"></i> Assign</button>
+            <button onclick="showToast('Bulk WhatsApp…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Message</button>
+            <button onclick="showToast('Export CSV / Tag / Archive…')" class="p-1 rounded hover:bg-white/10"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+          </div>
         </section>
 
         <!-- ============================================================
@@ -3005,8 +3394,8 @@
         </div>
       </nav>
 
-      <!-- Toast / snackbar -->
-      <div id="toast" class="toast absolute left-1/2 bottom-24 z-[60] bg-slate-900 text-white text-xs px-3.5 py-2.5 rounded-full shadow-lg flex items-center gap-2 max-w-[90%] whitespace-nowrap">
+      <!-- Toast / snackbar (top, transient) -->
+      <div id="toast" class="toast absolute left-1/2 top-20 z-[60] bg-slate-900 text-white text-xs px-3.5 py-2.5 rounded-full shadow-lg flex items-center gap-2 max-w-[90%] whitespace-nowrap">
         <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-none"></i>
         <span id="toast-msg">Saved</span>
       </div>
@@ -3093,6 +3482,55 @@
               <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
             </a>
           </li>
+        </ul>
+      </div>
+
+      <!-- Bottom-sheet: Scope (permission/hierarchy) -->
+      <div id="scope-sheet" class="sheet absolute left-0 right-0 bottom-0 bg-white z-50 rounded-t-2xl shadow-sheet">
+        <div class="flex justify-center pt-2"><div class="w-10 h-1 bg-slate-300 rounded-full"></div></div>
+        <div class="px-4 py-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">View customers as</h3>
+          <button data-close-sheet class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5 text-slate-700"></i></button>
+        </div>
+        <ul class="px-2 pb-5 divide-y divide-slate-100" id="scope-options">
+          <li><button data-scope="My customers" data-count="248" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+            <span class="w-9 h-9 rounded-lg bg-brand-100 grid place-items-center"><i data-lucide="user" class="w-4 h-4 text-brand-700"></i></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-slate-900">My customers</div>
+              <div class="text-[11px] text-slate-500">Your book · 248</div>
+            </div>
+            <i data-lucide="check" class="w-4 h-4 text-brand-600"></i>
+          </button></li>
+          <li><button data-scope="My team" data-count="1,548" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+            <span class="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="users" class="w-4 h-4 text-violet-700"></i></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-slate-900">My team</div>
+              <div class="text-[11px] text-slate-500">Hero Cycles · 4 reps · 1,548</div>
+            </div>
+          </button></li>
+          <li><button data-scope="My dealer" data-count="3,212" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+            <span class="w-9 h-9 rounded-lg bg-emerald-100 grid place-items-center"><i data-lucide="store" class="w-4 h-4 text-emerald-700"></i></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-slate-900">My dealer</div>
+              <div class="text-[11px] text-slate-500">Hero Cycles Sector 18 · 3,212</div>
+            </div>
+          </button></li>
+          <li><button data-scope="North region" data-count="48,820" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+            <span class="w-9 h-9 rounded-lg bg-sky-100 grid place-items-center"><i data-lucide="map" class="w-4 h-4 text-sky-700"></i></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-slate-900">North region</div>
+              <div class="text-[11px] text-slate-500">Delhi · NCR · Punjab · 48,820</div>
+            </div>
+            <span class="pill bg-amber-50 text-amber-700">Manager</span>
+          </button></li>
+          <li><button data-scope="All customers" data-count="1,28,400" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+            <span class="w-9 h-9 rounded-lg bg-amber-100 grid place-items-center"><i data-lucide="globe" class="w-4 h-4 text-amber-700"></i></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-slate-900">All customers</div>
+              <div class="text-[11px] text-slate-500">100 stores · 1000 SEs · 1,28,400</div>
+            </div>
+            <span class="pill bg-amber-50 text-amber-700">Admin</span>
+          </button></li>
         </ul>
       </div>
 
@@ -3265,20 +3703,11 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
   };
 
-  // Wire all forms — show toast on submit, then go back
+  // Wire all forms — silently save and go back
   document.querySelectorAll('section[data-screen^="log-"] form').forEach(form => {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const screenName = form.closest('[data-screen]').dataset.screen;
-      const labels = {
-        'log-call': 'Call logged',
-        'log-walkin': 'Walk-in saved',
-        'log-testride': 'Test ride saved',
-        'log-followup': 'Follow-up scheduled',
-        'log-note': 'Note added',
-      };
-      showToast(labels[screenName] || 'Saved');
-      setTimeout(() => history.back(), 200);
+      history.back();
     });
   });
 
@@ -3410,25 +3839,87 @@
     btn.dataset.wired = '1';
   });
 
-  // ----- Bottom sheets (filter + log) -----
+  // ----- Bottom sheets (filter + log + scope) -----
   const filterSheet = document.getElementById('filter-sheet');
   const logSheet = document.getElementById('log-sheet');
+  const scopeSheet = document.getElementById('scope-sheet');
   const scrim = document.getElementById('scrim');
+  const ALL_SHEETS = [filterSheet, logSheet, scopeSheet].filter(Boolean);
   function openSheet(sheetEl) {
-    [filterSheet, logSheet].forEach(s => s.classList.remove('open'));
+    ALL_SHEETS.forEach(s => s.classList.remove('open'));
     sheetEl.classList.add('open');
     scrim.classList.add('open');
   }
   function closeAllSheets() {
-    [filterSheet, logSheet].forEach(s => s.classList.remove('open'));
+    ALL_SHEETS.forEach(s => s.classList.remove('open'));
     scrim.classList.remove('open');
   }
   document.getElementById('open-filter')?.addEventListener('click', () => openSheet(filterSheet));
   document.getElementById('open-filter-events')?.addEventListener('click', () => openSheet(filterSheet));
   document.getElementById('close-filter').addEventListener('click', closeAllSheets);
   document.getElementById('fab').addEventListener('click', () => openSheet(logSheet));
+  document.getElementById('open-scope')?.addEventListener('click', () => openSheet(scopeSheet));
   document.querySelectorAll('[data-close-sheet]').forEach(b => b.addEventListener('click', closeAllSheets));
   scrim.addEventListener('click', closeAllSheets);
+
+  // ----- Scope switching -----
+  document.querySelectorAll('#scope-options [data-scope]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const scope = btn.dataset.scope;
+      const count = btn.dataset.count;
+      const label = document.getElementById('scope-label');
+      const total = document.getElementById('scope-total');
+      if (label) label.textContent = scope;
+      if (total) total.textContent = count;
+      // Visual: move check icon
+      document.querySelectorAll('#scope-options [data-lucide="check"]').forEach(i => i.remove());
+      const check = document.createElement('i');
+      check.setAttribute('data-lucide', 'check');
+      check.className = 'w-4 h-4 text-brand-600';
+      btn.appendChild(check);
+      lucide.createIcons();
+      showToast(`Now viewing: ${scope}`);
+    });
+  });
+
+  // ----- Select mode (Customers list) -----
+  let selectMode = false;
+  const toggleSelect = document.getElementById('toggle-select');
+  const bulkBar = document.getElementById('bulk-bar');
+  const bulkCount = document.getElementById('bulk-count');
+  const bulkClear = document.getElementById('bulk-clear');
+  function setSelectMode(on) {
+    selectMode = on;
+    if (toggleSelect) toggleSelect.textContent = on ? 'Done' : 'Select';
+    document.querySelectorAll('#customers-list .select-only').forEach(cb => cb.classList.toggle('hidden', !on));
+    document.querySelectorAll('#customers-list a.customer-row').forEach(a => {
+      if (on) {
+        a.dataset.href = a.getAttribute('href');
+        a.removeAttribute('href');
+        a.style.cursor = 'default';
+      } else {
+        if (a.dataset.href) a.setAttribute('href', a.dataset.href);
+        a.style.cursor = '';
+        const cb = a.querySelector('.select-only');
+        if (cb) cb.checked = false;
+      }
+    });
+    if (!on) { bulkBar.classList.add('hidden'); bulkCount.textContent = '0'; }
+  }
+  toggleSelect?.addEventListener('click', () => setSelectMode(!selectMode));
+  bulkClear?.addEventListener('click', () => setSelectMode(false));
+  document.querySelectorAll('#customers-list a.customer-row').forEach(a => {
+    a.addEventListener('click', (e) => {
+      if (!selectMode) return;
+      e.preventDefault();
+      const cb = a.querySelector('.select-only');
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      const total = document.querySelectorAll('#customers-list .select-only:checked').length;
+      bulkCount.textContent = String(total);
+      bulkBar.classList.toggle('hidden', total === 0);
+    });
+  });
 </script>
 
 </body>
