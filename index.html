@@ -4616,6 +4616,112 @@
     });
   }
   ['customers', 'leads', 'calls', 'sales', 'walkins', 'testrides', 'dispositions'].forEach(setupSelectContext);
+
+  // ----- Saved views CRUD (localStorage-backed) -----
+  const SV_KEY = 'ottopilot.savedViews.';
+  function getSavedViews(entity) {
+    try { return JSON.parse(localStorage.getItem(SV_KEY + entity) || '[]'); } catch { return []; }
+  }
+  function setSavedViews(entity, views) {
+    localStorage.setItem(SV_KEY + entity, JSON.stringify(views));
+  }
+  function renderSavedViews(entity) {
+    const container = document.querySelector(`[data-saved-views="${entity}"]`);
+    if (!container) return;
+    container.querySelectorAll('[data-saved-view-chip]').forEach(el => el.remove());
+    const saveBtn = container.querySelector(`[data-save-view="${entity}"]`);
+    const views = getSavedViews(entity);
+    views.forEach(view => {
+      const chip = document.createElement('span');
+      chip.dataset.savedViewChip = view.id;
+      chip.className = 'pill bg-violet-50 text-violet-700 ring-1 ring-violet-500/20 whitespace-nowrap inline-flex items-center gap-1';
+      chip.innerHTML = `
+        <button class="flex items-center gap-1" data-apply-view><i data-lucide="bookmark" class="w-3 h-3"></i> ${view.name}</button>
+        <button class="opacity-50 hover:opacity-100" data-delete-view aria-label="Delete view"><i data-lucide="x" class="w-3 h-3"></i></button>`;
+      chip.querySelector('[data-apply-view]').addEventListener('click', () => showToast(`Applied: ${view.name}`));
+      chip.querySelector('[data-delete-view]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = getSavedViews(entity).filter(v => v.id !== view.id);
+        setSavedViews(entity, updated);
+        renderSavedViews(entity);
+        showToast(`Deleted "${view.name}"`);
+      });
+      if (saveBtn) container.insertBefore(chip, saveBtn);
+      else container.appendChild(chip);
+    });
+    lucide.createIcons();
+  }
+  // Auto-tag the saved-views row on each entity by finding the "Save"/"Save current" pill
+  ['customers', 'leads', 'calls', 'sales'].forEach(entity => {
+    const screenName = entity === 'sales' ? 'sales-list' : entity;
+    const section = document.querySelector(`section[data-screen="${screenName}"]`);
+    if (!section) return;
+    section.querySelectorAll('.flex.gap-2.overflow-x-auto').forEach(row => {
+      const saveBtn = Array.from(row.querySelectorAll('button')).find(b => /^\s*save(\s+current)?\s*$/i.test(b.textContent.trim()));
+      if (saveBtn && !saveBtn.dataset.saveView) {
+        saveBtn.dataset.saveView = entity;
+        row.dataset.savedViews = entity;
+        saveBtn.addEventListener('click', () => {
+          const name = (typeof prompt === 'function') ? prompt('Name this view:', '') : null;
+          if (!name) return;
+          const views = getSavedViews(entity);
+          views.push({ id: 'v' + Date.now(), name: name.slice(0, 40) });
+          setSavedViews(entity, views);
+          renderSavedViews(entity);
+          showToast(`Saved "${name}"`);
+        });
+        renderSavedViews(entity);
+      }
+    });
+  });
+
+  // ----- Kanban drag-and-drop (HTML5 DnD; works on desktop/tablet) -----
+  function setupKanbanDnD(panel) {
+    const row = panel.querySelector('.snap-x');
+    if (!row) return;
+    const columns = Array.from(row.children);
+    let draggedCard = null;
+    columns.forEach(col => {
+      col.querySelectorAll(':scope > .space-y-2 > a, :scope .space-y-2 > a').forEach(card => {
+        if (card.dataset.kanbanDnd) return;
+        card.dataset.kanbanDnd = '1';
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', (e) => {
+          draggedCard = card;
+          card.classList.add('opacity-40');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', '');
+        });
+        card.addEventListener('dragend', () => {
+          if (draggedCard) draggedCard.classList.remove('opacity-40');
+          draggedCard = null;
+          row.querySelectorAll('.kanban-drop-target').forEach(c => c.classList.remove('kanban-drop-target', 'ring-2', 'ring-brand-500'));
+        });
+      });
+      col.addEventListener('dragover', (e) => {
+        if (!draggedCard) return;
+        e.preventDefault();
+        col.classList.add('kanban-drop-target', 'ring-2', 'ring-brand-500');
+      });
+      col.addEventListener('dragleave', (e) => {
+        if (!col.contains(e.relatedTarget)) {
+          col.classList.remove('kanban-drop-target', 'ring-2', 'ring-brand-500');
+        }
+      });
+      col.addEventListener('drop', (e) => {
+        e.preventDefault();
+        col.classList.remove('kanban-drop-target', 'ring-2', 'ring-brand-500');
+        if (!draggedCard) return;
+        const target = col.querySelector('.space-y-2');
+        if (target && !target.contains(draggedCard)) {
+          target.appendChild(draggedCard);
+          const colName = (col.querySelector('.pill')?.textContent || '').trim();
+          showToast(`Moved to ${colName}`);
+        }
+      });
+    });
+  }
+  document.querySelectorAll('[data-view-panel="board"], [data-view-panel="kanban"]').forEach(setupKanbanDnD);
 </script>
 
 </body>
