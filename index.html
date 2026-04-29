@@ -221,12 +221,12 @@
           <!-- 6. Result count + Select -->
           <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
             <span class="text-slate-500">Showing <span class="font-medium text-slate-700">10</span> of <span class="font-medium text-slate-700">248</span></span>
-            <button id="toggle-select" class="text-brand-600 font-medium">Select</button>
+            <button data-select-toggle="customers" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- 7. LIST view -->
           <div data-view-panel="list" data-view-switcher-target="customers">
-            <ul class="px-4 space-y-2" id="customers-list">
+            <ul class="px-4 space-y-2" id="customers-list" data-select-list="customers">
               <!-- Each card has a checkbox shown only in select mode + drill href -->
               <li><a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
                 <div class="flex items-center gap-3">
@@ -682,9 +682,9 @@
           </div>
 
           <!-- 10. Bulk action bar (hidden, shown in select mode) -->
-          <div id="bulk-bar" class="hidden absolute left-3 right-3 bottom-20 z-30 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center gap-1 px-3 py-2.5">
-            <button id="bulk-clear" class="p-1 rounded hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
-            <span class="text-xs"><span id="bulk-count">0</span> selected</span>
+          <div id="bulk-bar-customers" class="hidden absolute left-3 right-3 bottom-20 z-30 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center gap-1 px-3 py-2.5">
+            <button data-bulk-clear class="p-1 rounded hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+            <span class="text-xs"><span data-bulk-count>0</span> selected</span>
             <div class="flex-1"></div>
             <button onclick="showToast('Reassign to…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="user-cog" class="w-3.5 h-3.5"></i> Assign</button>
             <button onclick="showToast('Bulk WhatsApp…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Message</button>
@@ -1643,12 +1643,12 @@
           <!-- Result count + Select -->
           <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
             <span class="text-slate-500">Showing <span class="font-medium text-slate-700">5</span> of <span class="font-medium text-slate-700">42</span></span>
-            <button onclick="showToast('Select mode')" class="text-brand-600 font-medium">Select</button>
+            <button data-select-toggle="leads" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- LIST -->
           <div data-view-panel="list" data-view-switcher-target="leads">
-            <ul class="px-4 pb-24 space-y-2">
+            <ul class="px-4 pb-24 space-y-2" data-select-list="leads">
               <li>
                 <a href="#profile/akash-kumar" class="block bg-white rounded-xl shadow-card p-3.5 active:bg-slate-50">
                   <div class="flex items-start gap-3">
@@ -1846,6 +1846,16 @@
             </div>
             <div class="h-24"></div>
           </div>
+
+          <!-- Bulk action bar (Leads) -->
+          <div id="bulk-bar-leads" class="hidden absolute left-3 right-3 bottom-20 z-30 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center gap-1 px-3 py-2.5">
+            <button data-bulk-clear class="p-1 rounded hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+            <span class="text-xs"><span data-bulk-count>0</span> selected</span>
+            <div class="flex-1"></div>
+            <button onclick="showToast('Assign to SE…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="user-cog" class="w-3.5 h-3.5"></i> Assign</button>
+            <button onclick="showToast('Bulk WhatsApp template')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Message</button>
+            <button onclick="showToast('Mark qualified · Export · Tag · Archive')" class="p-1 rounded hover:bg-white/10"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+          </div>
         </section>
 
         <!-- ============================================================
@@ -1915,12 +1925,12 @@
           <!-- Result count + Select -->
           <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
             <span class="text-slate-500">Showing <span class="font-medium text-slate-700">3</span> of <span class="font-medium text-slate-700">14</span></span>
-            <button onclick="showToast('Select mode')" class="text-brand-600 font-medium">Select</button>
+            <button data-select-toggle="calls" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- LIST -->
           <div data-view-panel="list" data-view-switcher-target="calls">
-            <ul class="px-4 pb-24 space-y-2">
+            <ul class="px-4 pb-24 space-y-2" data-select-list="calls">
               <li>
                 <a href="#profile/akash-kumar" class="block bg-white rounded-xl shadow-card p-3.5 active:bg-slate-50">
                   <div class="flex items-center justify-between mb-1">
@@ -2101,6 +2111,16 @@
               </div>
             </div>
             <div class="h-24"></div>
+          </div>
+
+          <!-- Bulk action bar (Calls) -->
+          <div id="bulk-bar-calls" class="hidden absolute left-3 right-3 bottom-20 z-30 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center gap-1 px-3 py-2.5">
+            <button data-bulk-clear class="p-1 rounded hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+            <span class="text-xs"><span data-bulk-count>0</span> selected</span>
+            <div class="flex-1"></div>
+            <button onclick="showToast('Reschedule batch…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Reschedule</button>
+            <button onclick="showToast('Mark all connected')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Logged</button>
+            <button onclick="showToast('Reassign · Export · Cancel')" class="p-1 rounded hover:bg-white/10"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
           </div>
         </section>
 
@@ -3312,12 +3332,12 @@
           <!-- Result count + Select -->
           <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
             <span class="text-slate-500">Showing <span class="font-medium text-slate-700">3</span> of <span class="font-medium text-slate-700">62</span></span>
-            <button onclick="showToast('Select mode')" class="text-brand-600 font-medium">Select</button>
+            <button data-select-toggle="sales" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- LIST -->
           <div data-view-panel="list" data-view-switcher-target="sales-list">
-            <ul class="px-4 pb-24 space-y-2">
+            <ul class="px-4 pb-24 space-y-2" data-select-list="sales">
               <li><a href="#profile/akash-kumar" class="block bg-white rounded-xl shadow-card p-3 active:bg-slate-50">
                 <div class="flex items-center justify-between gap-2">
                   <div class="min-w-0">
@@ -3510,6 +3530,16 @@
               </div>
             </div>
             <div class="h-24"></div>
+          </div>
+
+          <!-- Bulk action bar (Sales) -->
+          <div id="bulk-bar-sales" class="hidden absolute left-3 right-3 bottom-20 z-30 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center gap-1 px-3 py-2.5">
+            <button data-bulk-clear class="p-1 rounded hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+            <span class="text-xs"><span data-bulk-count>0</span> selected</span>
+            <div class="flex-1"></div>
+            <button onclick="showToast('Send quote reminder')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="send" class="w-3.5 h-3.5"></i> Remind</button>
+            <button onclick="showToast('Update status…')" class="px-2 py-1 rounded-lg hover:bg-white/10 text-[11px] flex items-center gap-1"><i data-lucide="circle-check" class="w-3.5 h-3.5"></i> Status</button>
+            <button onclick="showToast('Export · Invoice · Cancel · More')" class="p-1 rounded hover:bg-white/10"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
           </div>
         </section>
 
@@ -4416,44 +4446,54 @@
     });
   });
 
-  // ----- Select mode (Customers list) -----
-  let selectMode = false;
-  const toggleSelect = document.getElementById('toggle-select');
-  const bulkBar = document.getElementById('bulk-bar');
-  const bulkCount = document.getElementById('bulk-count');
-  const bulkClear = document.getElementById('bulk-clear');
-  function setSelectMode(on) {
-    selectMode = on;
-    if (toggleSelect) toggleSelect.textContent = on ? 'Done' : 'Select';
-    document.querySelectorAll('#customers-list .select-only').forEach(cb => cb.classList.toggle('hidden', !on));
-    document.querySelectorAll('#customers-list a.customer-row').forEach(a => {
-      if (on) {
-        a.dataset.href = a.getAttribute('href');
-        a.removeAttribute('href');
-        a.style.cursor = 'default';
+  // ----- Generic select mode (works for any [data-select-list] + matching toggle button + bulk bar) -----
+  function setupSelectContext(name) {
+    const list = document.querySelector(`[data-select-list="${name}"]`);
+    if (!list) return;
+    const toggleBtn = document.querySelector(`[data-select-toggle="${name}"]`);
+    const bulkBar = document.getElementById(`bulk-bar-${name}`);
+    const bulkCount = bulkBar?.querySelector('[data-bulk-count]');
+    const bulkClear = bulkBar?.querySelector('[data-bulk-clear]');
+    let selectMode = false;
+    function setMode(on) {
+      selectMode = on;
+      list.classList.toggle('select-mode', on);
+      if (toggleBtn) toggleBtn.textContent = on ? 'Done' : 'Select';
+      if (!on) {
+        list.querySelectorAll('.is-selected').forEach(el => {
+          el.classList.remove('is-selected', 'ring-2', 'ring-brand-600', 'bg-brand-50');
+          // Restore href if it was suppressed
+          if (el.dataset.href) { el.setAttribute('href', el.dataset.href); delete el.dataset.href; }
+          // Uncheck any embedded select-only checkbox (Customers list legacy)
+          el.querySelectorAll('.select-only').forEach(cb => { cb.checked = false; cb.classList.add('hidden'); });
+        });
+        list.querySelectorAll('a[data-href]').forEach(a => { a.setAttribute('href', a.dataset.href); delete a.dataset.href; });
+        list.querySelectorAll('.select-only').forEach(cb => cb.classList.add('hidden'));
+        if (bulkBar) bulkBar.classList.add('hidden');
+        if (bulkCount) bulkCount.textContent = '0';
       } else {
-        if (a.dataset.href) a.setAttribute('href', a.dataset.href);
-        a.style.cursor = '';
-        const cb = a.querySelector('.select-only');
-        if (cb) cb.checked = false;
+        list.querySelectorAll('.select-only').forEach(cb => cb.classList.remove('hidden'));
       }
+    }
+    toggleBtn?.addEventListener('click', () => setMode(!selectMode));
+    bulkClear?.addEventListener('click', () => setMode(false));
+    list.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', (e) => {
+        if (!selectMode) return;
+        e.preventDefault();
+        a.classList.toggle('is-selected');
+        a.classList.toggle('ring-2');
+        a.classList.toggle('ring-brand-600');
+        a.classList.toggle('bg-brand-50');
+        const cb = a.querySelector('.select-only');
+        if (cb) cb.checked = a.classList.contains('is-selected');
+        const total = list.querySelectorAll('.is-selected').length;
+        if (bulkCount) bulkCount.textContent = String(total);
+        if (bulkBar) bulkBar.classList.toggle('hidden', total === 0);
+      });
     });
-    if (!on) { bulkBar.classList.add('hidden'); bulkCount.textContent = '0'; }
   }
-  toggleSelect?.addEventListener('click', () => setSelectMode(!selectMode));
-  bulkClear?.addEventListener('click', () => setSelectMode(false));
-  document.querySelectorAll('#customers-list a.customer-row').forEach(a => {
-    a.addEventListener('click', (e) => {
-      if (!selectMode) return;
-      e.preventDefault();
-      const cb = a.querySelector('.select-only');
-      if (!cb) return;
-      cb.checked = !cb.checked;
-      const total = document.querySelectorAll('#customers-list .select-only:checked').length;
-      bulkCount.textContent = String(total);
-      bulkBar.classList.toggle('hidden', total === 0);
-    });
-  });
+  ['customers', 'leads', 'calls', 'sales'].forEach(setupSelectContext);
 </script>
 
 </body>
