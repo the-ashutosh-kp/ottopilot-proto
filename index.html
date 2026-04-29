@@ -87,6 +87,24 @@
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
     outline: 2px solid #7c3aed; outline-offset: 2px; border-radius: 6px;
   }
+  /* Resizable / sortable table columns */
+  th.col-resizable { position: relative; user-select: none; }
+  th.col-resizable .resize-handle {
+    position: absolute; top: 0; right: -4px; bottom: 0; width: 8px;
+    cursor: col-resize; z-index: 5;
+  }
+  th.col-resizable .resize-handle::after {
+    content: ''; position: absolute; left: 3px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px;
+    background: transparent; transition: background .15s;
+  }
+  th.col-resizable:hover .resize-handle::after,
+  th.col-resizable.resizing .resize-handle::after { background: #7c3aed; }
+  th.col-sortable { cursor: pointer; }
+  th.col-sortable:hover { background: #eef2f7; }
+  th .sort-arrow { display: inline-block; width: 10px; opacity: .35; }
+  th[data-sort] .sort-arrow { opacity: 1; color: #7c3aed; }
+  /* Hidden column class */
+  .col-hidden { display: none !important; }
 </style>
 </head>
 <body class="bg-slate-200 sm:bg-slate-300 min-h-screen">
@@ -408,21 +426,51 @@
                   <button onclick="showToast('Density: Comfortable')" class="px-2 py-0.5 rounded text-slate-600 text-[10px]">Cozy</button>
                 </div>
               </div>
-              <button onclick="showToast('Choose visible columns…')" class="text-[11px] text-slate-600 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="columns-3" class="w-3.5 h-3.5"></i> Columns</button>
+              <button id="open-cols" class="text-[11px] text-slate-600 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="columns-3" class="w-3.5 h-3.5"></i> Columns</button>
             </div>
             <div class="px-2 pb-2">
               <div class="bg-white rounded-xl shadow-card overflow-x-auto">
-                <table class="min-w-full text-[11px]">
+                <table id="customers-table" class="min-w-full text-[11px]" style="table-layout: fixed;">
+                  <colgroup>
+                    <col data-col="select" style="width: 32px;">
+                    <col data-col="name" style="width: 150px;">
+                    <col data-col="stage" style="width: 90px;">
+                    <col data-col="owner" style="width: 90px;">
+                    <col data-col="dealer" style="width: 80px;">
+                    <col data-col="last" style="width: 88px;">
+                    <col data-col="revenue" style="width: 96px;">
+                    <col data-col="score" style="width: 56px;">
+                  </colgroup>
                   <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
                     <tr>
-                      <th class="px-2 py-2 w-7"><input type="checkbox" class="rounded" /></th>
-                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Name <i data-lucide="arrow-down" class="inline w-3 h-3 ml-0.5"></i></th>
-                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Stage</th>
-                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Owner</th>
-                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Dealer</th>
-                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Last activity</th>
-                      <th class="px-2 py-2 text-right font-medium whitespace-nowrap">Revenue</th>
-                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Score</th>
+                      <th class="px-2 py-2"><input id="select-all-rows" type="checkbox" class="rounded" /></th>
+                      <th class="col-resizable col-sortable px-2 py-2 text-left font-medium whitespace-nowrap" data-col="name" data-sort="asc">
+                        Name <span class="sort-arrow">↑</span>
+                        <span class="resize-handle"></span>
+                      </th>
+                      <th class="col-resizable col-sortable px-2 py-2 text-left font-medium whitespace-nowrap" data-col="stage">
+                        Stage <span class="sort-arrow">↕</span>
+                        <span class="resize-handle"></span>
+                      </th>
+                      <th class="col-resizable col-sortable px-2 py-2 text-left font-medium whitespace-nowrap" data-col="owner">
+                        Owner <span class="sort-arrow">↕</span>
+                        <span class="resize-handle"></span>
+                      </th>
+                      <th class="col-resizable col-sortable px-2 py-2 text-left font-medium whitespace-nowrap" data-col="dealer">
+                        Dealer <span class="sort-arrow">↕</span>
+                        <span class="resize-handle"></span>
+                      </th>
+                      <th class="col-resizable col-sortable px-2 py-2 text-left font-medium whitespace-nowrap" data-col="last">
+                        Last activity <span class="sort-arrow">↕</span>
+                        <span class="resize-handle"></span>
+                      </th>
+                      <th class="col-resizable col-sortable px-2 py-2 text-right font-medium whitespace-nowrap" data-col="revenue">
+                        Revenue <span class="sort-arrow">↕</span>
+                        <span class="resize-handle"></span>
+                      </th>
+                      <th class="col-sortable px-2 py-2 text-left font-medium whitespace-nowrap" data-col="score">
+                        Score <span class="sort-arrow">↕</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">
@@ -1531,8 +1579,21 @@
              SCREEN — Leads
              ============================================================ -->
         <section data-screen="leads">
+          <!-- Scope + sync -->
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <button onclick="openSheet(scopeSheet)" class="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-lg active:bg-slate-100">
+              <span class="text-[10px] uppercase tracking-wide text-slate-500 font-medium">Scope</span>
+              <span class="text-sm font-semibold text-slate-900">My leads</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+            </button>
+            <button class="flex items-center gap-1.5 text-[10px] text-slate-500" onclick="showToast('Pulling latest…')">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Synced 2m ago</span>
+            </button>
+          </div>
+
           <!-- Hero stats -->
-          <div class="px-4 pt-3 pb-2 grid grid-cols-3 gap-2">
+          <div class="px-4 pb-2 grid grid-cols-3 gap-2">
             <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
               <div class="text-base font-bold text-slate-900">42</div>
               <div class="text-[10px] text-slate-500">Today</div>
@@ -1547,25 +1608,42 @@
             </div>
           </div>
 
-          <!-- View mode + filter -->
-          <div class="px-4 pt-1 pb-2 flex items-center justify-between" data-view-switcher="leads">
+          <!-- Search -->
+          <div class="px-4 pb-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input type="search" placeholder="Search by name, phone, source…" class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" />
+            </div>
+          </div>
+
+          <!-- Saved views -->
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap flex items-center gap-1"><i data-lucide="star" class="w-3 h-3"></i> All · 42</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Hot (≥80) · 14</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="bell-ring" class="w-3 h-3"></i> Today's new · 9</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="moon" class="w-3 h-3"></i> Stale · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="user-x" class="w-3 h-3"></i> Unassigned · 3</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Save</button>
+          </div>
+
+          <!-- View mode + toolbar -->
+          <div class="px-4 pb-2 flex items-center justify-between" data-view-switcher="leads">
             <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
               <button data-view-mode="list" class="px-2.5 py-1 rounded-md bg-white shadow-sm text-xs font-medium text-slate-900">List</button>
               <button data-view-mode="board" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Board</button>
               <button data-view-mode="table" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Table</button>
             </div>
-            <button class="flex items-center gap-1 text-xs text-slate-600">
-              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filter
-            </button>
+            <div class="flex items-center gap-0.5">
+              <button onclick="showToast('Sort by score · age · activity')" class="p-1.5 rounded-lg hover:bg-slate-100" aria-label="Sort"><i data-lucide="arrow-up-down" class="w-4 h-4 text-slate-600"></i></button>
+              <button onclick="openSheet(filterSheet)" class="p-1.5 rounded-lg hover:bg-slate-100 relative" aria-label="Filter"><i data-lucide="sliders-horizontal" class="w-4 h-4 text-slate-600"></i></button>
+              <button onclick="showToast('Export · Density · More')" class="p-1.5 rounded-lg hover:bg-slate-100" aria-label="More"><i data-lucide="more-vertical" class="w-4 h-4 text-slate-600"></i></button>
+            </div>
           </div>
 
-          <!-- Filter chips -->
-          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 42</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">New</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Qualified</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Engaged</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Lost</button>
+          <!-- Result count + Select -->
+          <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500">Showing <span class="font-medium text-slate-700">5</span> of <span class="font-medium text-slate-700">42</span></span>
+            <button onclick="showToast('Select mode')" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- LIST -->
@@ -1621,86 +1699,152 @@
             </ul>
           </div>
 
-          <!-- BOARD (Kanban by stage) -->
+          <!-- BOARD (Kanban by stage with WIP + totals) -->
           <div data-view-panel="board" data-view-switcher-target="leads" class="hidden">
+            <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-500">Group by</span>
+                <select class="border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                  <option>Stage</option><option>Owner</option><option>Source</option><option>Score band</option>
+                </select>
+              </div>
+              <button onclick="showToast('Swimlanes by source')" class="flex items-center gap-1 text-slate-600 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="rows-3" class="w-3.5 h-3.5"></i> Swimlanes</button>
+            </div>
             <div class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-24 snap-x snap-mandatory">
               <!-- New -->
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2">
-                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">New</span><span class="text-[11px] text-slate-500">14</span></div>
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">New</span><span class="text-[11px] text-slate-500">14 / 30</span></div>
+                  <button onclick="showToast('Add lead to New')" class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
                 </div>
-                <div class="space-y-2">
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-amber-400 rounded-full" style="width:47%"></div></div>
+                <div class="space-y-2 flex-1">
                   <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Suresh Kumar</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Score 92 · 12m</div>
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">SK</div><span class="text-sm font-medium text-slate-900 truncate">Suresh Kumar</span><span class="ml-auto pill bg-emerald-50 text-emerald-700 text-[9px]">92</span></div>
+                    <div class="text-[10px] text-slate-500">Hero · Website</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">12 min ago</div>
                   </a>
                   <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Anil Verma</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Score 78 · 1h</div>
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">AV</div><span class="text-sm font-medium text-slate-900 truncate">Anil Verma</span><span class="ml-auto pill bg-amber-50 text-amber-700 text-[9px]">78</span></div>
+                    <div class="text-[10px] text-slate-500">Hero · Website</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">1h ago</div>
                   </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>14 leads</span><span class="font-medium">~₹ 9.6 L pipeline</span>
                 </div>
               </div>
               <!-- Qualified -->
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2">
-                  <div class="flex items-center gap-2"><span class="pill bg-sky-50 text-sky-700">Qualified</span><span class="text-[11px] text-slate-500">12</span></div>
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-sky-50 text-sky-700">Qualified</span><span class="text-[11px] text-slate-500">12 / 25</span></div>
                 </div>
-                <div class="space-y-2">
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-sky-500 rounded-full" style="width:48%"></div></div>
+                <div class="space-y-2 flex-1">
                   <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Deepa Mahadevan</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">CK · 2h</div>
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-[10px] font-semibold">DM</div><span class="text-sm font-medium text-slate-900 truncate">Deepa Mahadevan</span><span class="ml-auto pill bg-sky-50 text-sky-700 text-[9px]">67</span></div>
+                    <div class="text-[10px] text-slate-500">CK · Walk-in</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">2h ago</div>
                   </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>12 qualified</span><span class="font-medium">~₹ 8.4 L</span>
                 </div>
               </div>
               <!-- Engaged -->
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2">
-                  <div class="flex items-center gap-2"><span class="pill bg-violet-50 text-violet-700">Engaged</span><span class="text-[11px] text-slate-500">8</span></div>
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-violet-50 text-violet-700">Engaged</span><span class="text-[11px] text-slate-500">8 / 20</span></div>
                 </div>
-                <div class="space-y-2">
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Hero · 2h</div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-violet-500 rounded-full" style="width:40%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card ring-2 ring-violet-200">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">AK</div><span class="text-sm font-medium text-slate-900 truncate">Akash Kumar</span><span class="ml-auto pill bg-violet-50 text-violet-700 text-[9px]">High</span></div>
+                    <div class="text-[10px] text-slate-500">Hero · Naresh N.</div>
+                    <div class="text-[10px] text-emerald-700 mt-0.5">2h · Wants test ride</div>
                   </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>8 engaged</span><span class="font-medium">~₹ 6.8 L</span>
                 </div>
               </div>
               <!-- Stale -->
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2">
-                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Stale</span><span class="text-[11px] text-slate-500">8</span></div>
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Stale 5d+</span><span class="text-[11px] text-slate-500">8</span></div>
                 </div>
-                <div class="space-y-2">
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Vinay Reddy</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Metro · 5d</div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card opacity-90">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 grid place-items-center text-[10px] font-semibold">VR</div><span class="text-sm font-medium text-slate-900 truncate">Vinay Reddy</span><span class="ml-auto pill bg-rose-50 text-rose-700 text-[9px]">34</span></div>
+                    <div class="text-[10px] text-slate-500">Metro · Referral</div>
+                    <div class="text-[10px] text-amber-700 mt-0.5">5d · No response</div>
                   </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>Action needed</span><span class="font-medium text-rose-700">Re-engage</span>
+                </div>
+              </div>
+              <!-- Lost -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-rose-50 text-rose-700">Lost</span><span class="text-[11px] text-slate-500">12</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card opacity-75">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-rose-100 text-rose-700 grid place-items-center text-[10px] font-semibold">PM</div><span class="text-sm font-medium text-slate-900 truncate">Priya Mishra</span></div>
+                    <div class="text-[10px] text-slate-500">KKM · Referral</div>
+                    <div class="text-[10px] text-rose-700 mt-0.5">7d · Bought from competitor</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>12 lost</span><span class="font-medium">Win-back queue</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- TABLE -->
-          <div data-view-panel="table" data-view-switcher-target="leads" class="hidden px-4 pb-24">
-            <div class="bg-white rounded-xl shadow-card overflow-x-auto">
-              <table class="min-w-full text-[11px]">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
-                  <tr>
-                    <th class="px-2.5 py-2 text-left font-medium">Lead</th>
-                    <th class="px-2.5 py-2 text-left font-medium">Stage</th>
-                    <th class="px-2.5 py-2 text-left font-medium">Score</th>
-                    <th class="px-2.5 py-2 text-left font-medium">Source</th>
-                    <th class="px-2.5 py-2 text-left font-medium">Age</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr><td class="px-2.5 py-2 font-medium text-slate-900"><a href="#profile/akash-kumar" class="text-brand-600">Suresh Kumar</a></td><td><span class="pill bg-amber-50 text-amber-700">New</span></td><td>92</td><td>Website</td><td>12m</td></tr>
-                  <tr><td class="px-2.5 py-2 font-medium text-slate-900"><a href="#profile/akash-kumar" class="text-brand-600">Anil Verma</a></td><td><span class="pill bg-amber-50 text-amber-700">New</span></td><td>78</td><td>Website</td><td>1h</td></tr>
-                  <tr><td class="px-2.5 py-2 font-medium text-slate-900"><a href="#profile/akash-kumar" class="text-brand-600">Deepa Mahadevan</a></td><td><span class="pill bg-sky-50 text-sky-700">Qualified</span></td><td>67</td><td>Walk-in</td><td>2h</td></tr>
-                  <tr><td class="px-2.5 py-2 font-medium text-slate-900"><a href="#profile/akash-kumar" class="text-brand-600">Akash Kumar</a></td><td><span class="pill bg-violet-50 text-violet-700">Engaged</span></td><td>88</td><td>Website</td><td>2h</td></tr>
-                  <tr><td class="px-2.5 py-2 font-medium text-slate-900"><a href="#profile/akash-kumar" class="text-brand-600">Vinay Reddy</a></td><td><span class="pill bg-amber-50 text-amber-700">Stale</span></td><td>34</td><td>Referral</td><td>5d</td></tr>
-                </tbody>
-              </table>
+          <!-- TABLE (with density + pagination) -->
+          <div data-view-panel="table" data-view-switcher-target="leads" class="hidden">
+            <div class="px-2 pb-1.5 flex items-center justify-between">
+              <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-slate-500 px-1">Density</span>
+                <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
+                  <button class="px-2 py-0.5 rounded bg-white shadow-sm text-slate-900 text-[10px] font-medium">Compact</button>
+                  <button onclick="showToast('Cozy density')" class="px-2 py-0.5 rounded text-slate-600 text-[10px]">Cozy</button>
+                </div>
+              </div>
+              <button onclick="showToast('Choose visible columns…')" class="text-[11px] text-slate-600 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="columns-3" class="w-3.5 h-3.5"></i> Columns</button>
             </div>
+            <div class="px-2 pb-2">
+              <div class="bg-white rounded-xl shadow-card overflow-x-auto">
+                <table class="min-w-full text-[11px]">
+                  <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
+                    <tr>
+                      <th class="px-2 py-2 w-7"><input type="checkbox" class="rounded" /></th>
+                      <th class="px-2 py-2 text-left font-medium whitespace-nowrap">Lead</th>
+                      <th class="px-2 py-2 text-left font-medium">Stage</th>
+                      <th class="px-2 py-2 text-left font-medium">Score</th>
+                      <th class="px-2 py-2 text-left font-medium">Source</th>
+                      <th class="px-2 py-2 text-left font-medium">Owner</th>
+                      <th class="px-2 py-2 text-left font-medium">Dealer</th>
+                      <th class="px-2 py-2 text-left font-medium">Age</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Suresh Kumar</a><div class="text-[10px] text-slate-400">+91 98768 21345</div></td><td><span class="pill bg-amber-50 text-amber-700">New</span></td><td class="font-medium">92</td><td>Website</td><td>Naresh N.</td><td>Hero</td><td>12m</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Anil Verma</a><div class="text-[10px] text-slate-400">+91 98123 67890</div></td><td><span class="pill bg-amber-50 text-amber-700">New</span></td><td class="font-medium">78</td><td>Website</td><td>Naresh N.</td><td>Hero</td><td>1h</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Deepa Mahadevan</a><div class="text-[10px] text-slate-400">+91 91111 22221</div></td><td><span class="pill bg-sky-50 text-sky-700">Qualified</span></td><td class="font-medium">67</td><td>Walk-in</td><td>Sanjay G.</td><td>CK</td><td>2h</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Akash Kumar</a><div class="text-[10px] text-slate-400">+91 98765 43210</div></td><td><span class="pill bg-violet-50 text-violet-700">Engaged</span></td><td class="font-medium">88</td><td>Website</td><td>Naresh N.</td><td>Hero</td><td>2h</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 whitespace-nowrap"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Vinay Reddy</a><div class="text-[10px] text-slate-400">+91 99221 33445</div></td><td><span class="pill bg-amber-50 text-amber-700">Stale</span></td><td class="font-medium">34</td><td>Referral</td><td>Arun R.</td><td>Metro</td><td>5d</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-[11px] px-1.5">
+                <span class="text-slate-500">Rows <select class="border border-slate-200 rounded px-1 py-0.5 ml-1"><option>50</option><option>100</option><option>200</option></select></span>
+                <div class="flex items-center gap-2 text-slate-700"><span>1–5 of 42</span><button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-500"></i></button><button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-700"></i></button></div>
+              </div>
+            </div>
+            <div class="h-24"></div>
           </div>
         </section>
 
@@ -1708,8 +1852,21 @@
              SCREEN — Calls
              ============================================================ -->
         <section data-screen="calls">
-          <!-- Stat strip -->
-          <div class="px-4 pt-3 pb-2">
+          <!-- Scope + sync -->
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <button onclick="openSheet(scopeSheet)" class="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-lg active:bg-slate-100">
+              <span class="text-[10px] uppercase tracking-wide text-slate-500 font-medium">Scope</span>
+              <span class="text-sm font-semibold text-slate-900">My queue</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+            </button>
+            <button class="flex items-center gap-1.5 text-[10px] text-slate-500" onclick="showToast('Pulling latest…')">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Synced 1m ago</span>
+            </button>
+          </div>
+
+          <!-- Stat hero -->
+          <div class="px-4 pb-2">
             <div class="bg-gradient-to-br from-brand-600 to-brand-700 rounded-2xl p-3.5 text-white shadow-card">
               <div class="text-[11px] text-brand-100">Your queue today</div>
               <div class="flex items-end gap-3 mt-0.5">
@@ -1724,24 +1881,41 @@
             </div>
           </div>
 
-          <!-- View mode + filter -->
-          <div class="px-4 pt-1 pb-2 flex items-center justify-between" data-view-switcher="calls">
+          <!-- Search -->
+          <div class="px-4 pb-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input type="search" placeholder="Search by customer, phone, disposition…" class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" />
+            </div>
+          </div>
+
+          <!-- Saved views -->
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap flex items-center gap-1"><i data-lucide="star" class="w-3 h-3"></i> All · 14</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="alarm-clock" class="w-3 h-3"></i> Scheduled · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Logged · 5</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="phone-off" class="w-3 h-3"></i> Missed · 1</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="redo" class="w-3 h-3"></i> Retry · 3</button>
+          </div>
+
+          <!-- View mode + toolbar -->
+          <div class="px-4 pb-2 flex items-center justify-between" data-view-switcher="calls">
             <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
               <button data-view-mode="list" class="px-2.5 py-1 rounded-md bg-white shadow-sm text-xs font-medium text-slate-900">List</button>
               <button data-view-mode="board" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Board</button>
               <button data-view-mode="table" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Table</button>
             </div>
-            <button class="flex items-center gap-1 text-xs text-slate-600">
-              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filter
-            </button>
+            <div class="flex items-center gap-0.5">
+              <button onclick="showToast('Sort by time / duration / outcome')" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="arrow-up-down" class="w-4 h-4 text-slate-600"></i></button>
+              <button onclick="openSheet(filterSheet)" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="sliders-horizontal" class="w-4 h-4 text-slate-600"></i></button>
+              <button onclick="showToast('Export · Density · More')" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="more-vertical" class="w-4 h-4 text-slate-600"></i></button>
+            </div>
           </div>
 
-          <!-- Status chips -->
-          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 14</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Scheduled · 8</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Logged · 5</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Missed · 1</button>
+          <!-- Result count + Select -->
+          <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500">Showing <span class="font-medium text-slate-700">3</span> of <span class="font-medium text-slate-700">14</span></span>
+            <button onclick="showToast('Select mode')" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- LIST -->
@@ -1800,47 +1974,133 @@
             </ul>
           </div>
 
-          <!-- BOARD -->
+          <!-- BOARD (with WIP + totals) -->
           <div data-view-panel="board" data-view-switcher-target="calls" class="hidden">
+            <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-500">Group by</span>
+                <select class="border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                  <option>Status</option><option>Outcome</option><option>Owner</option><option>Hour</option>
+                </select>
+              </div>
+              <button onclick="showToast('Swimlanes by hour')" class="flex items-center gap-1 text-slate-600 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="rows-3" class="w-3.5 h-3.5"></i> Swimlanes</button>
+            </div>
             <div class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-24 snap-x snap-mandatory">
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2"><div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Scheduled</span><span class="text-[11px] text-slate-500">8</span></div></div>
-                <div class="space-y-2">
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card"><div class="text-sm font-medium text-slate-900">Akash Kumar</div><div class="text-[11px] text-slate-500 mt-0.5">11:00 · Hero</div></a>
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card"><div class="text-sm font-medium text-slate-900">Sanjay Desai</div><div class="text-[11px] text-slate-500 mt-0.5">11:30 · States</div></a>
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card"><div class="text-sm font-medium text-slate-900">Suresh Kumar</div><div class="text-[11px] text-slate-500 mt-0.5">14:00 · CK</div></a>
+              <!-- Scheduled -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Scheduled</span><span class="text-[11px] text-slate-500">8 / 15</span></div>
+                  <button onclick="showToast('Add to scheduled')" class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-amber-400 rounded-full" style="width:53%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card ring-2 ring-amber-200">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">AK</div><span class="text-sm font-medium text-slate-900 truncate">Akash Kumar</span><span class="ml-auto text-[10px] text-amber-700 font-medium">11:00</span></div>
+                    <div class="text-[10px] text-slate-500">Hero · Naresh N.</div>
+                    <div class="text-[10px] text-amber-700 mt-0.5">in 12 min</div>
+                  </a>
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-[10px] font-semibold">SD</div><span class="text-sm font-medium text-slate-900 truncate">Sanjay Desai</span><span class="ml-auto text-[10px] text-slate-500">11:30</span></div>
+                    <div class="text-[10px] text-slate-500">States · Sanjay G.</div>
+                  </a>
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">SK</div><span class="text-sm font-medium text-slate-900 truncate">Suresh Kumar</span><span class="ml-auto text-[10px] text-slate-500">14:00</span></div>
+                    <div class="text-[10px] text-slate-500">CK · Sanjay G.</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>8 calls</span><span class="font-medium">~1h 20m</span>
                 </div>
               </div>
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2"><div class="flex items-center gap-2"><span class="pill bg-emerald-50 text-emerald-700">Logged</span><span class="text-[11px] text-slate-500">5</span></div></div>
-                <div class="space-y-2">
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card"><div class="text-sm font-medium text-slate-900">Rohit Patel</div><div class="text-[11px] text-slate-500 mt-0.5">10:15 · 3m 12s · Connected</div></a>
+              <!-- Connected -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-emerald-50 text-emerald-700">Logged · Connected</span><span class="text-[11px] text-slate-500">5</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 grid place-items-center text-[10px] font-semibold">RP</div><span class="text-sm font-medium text-slate-900 truncate">Rohit Patel</span><span class="ml-auto text-[10px] text-emerald-700 font-medium">3m 12s</span></div>
+                    <div class="text-[10px] text-slate-500">10:15 · Wants quote EOD</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>5 connected</span><span class="font-medium text-emerald-700">71% rate</span>
                 </div>
               </div>
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2"><div class="flex items-center gap-2"><span class="pill bg-rose-50 text-rose-700">Missed</span><span class="text-[11px] text-slate-500">1</span></div></div>
-                <div class="space-y-2">
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card"><div class="text-sm font-medium text-slate-900">Vinay Reddy</div><div class="text-[11px] text-slate-500 mt-0.5">9:00 · No answer</div></a>
+              <!-- Retry -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Retry</span><span class="text-[11px] text-slate-500">3</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-[10px] font-semibold">DM</div><span class="text-sm font-medium text-slate-900 truncate">Deepa Mahadevan</span><span class="ml-auto text-[10px] text-slate-500">2nd</span></div>
+                    <div class="text-[10px] text-slate-500">Last try 9:30 · Voicemail</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>3 to retry</span><span class="font-medium">Retry now</span>
+                </div>
+              </div>
+              <!-- Missed -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-rose-50 text-rose-700">Missed</span><span class="text-[11px] text-slate-500">1</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card opacity-90">
+                    <div class="flex items-center gap-2 mb-1"><div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 grid place-items-center text-[10px] font-semibold">VR</div><span class="text-sm font-medium text-slate-900 truncate">Vinay Reddy</span><span class="ml-auto text-[10px] text-rose-700">9:00</span></div>
+                    <div class="text-[10px] text-rose-700">No answer · 3rd attempt</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>Auto-mark stale at 5</span><span class="font-medium text-rose-700">1 of 3</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- TABLE -->
-          <div data-view-panel="table" data-view-switcher-target="calls" class="hidden px-4 pb-24">
-            <div class="bg-white rounded-xl shadow-card overflow-x-auto">
-              <table class="min-w-full text-[11px]">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
-                  <tr><th class="px-2.5 py-2 text-left font-medium">Time</th><th class="px-2.5 py-2 text-left font-medium">Customer</th><th class="px-2.5 py-2 text-left font-medium">Status</th><th class="px-2.5 py-2 text-left font-medium">Duration</th><th class="px-2.5 py-2 text-left font-medium">Disposition</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr><td class="px-2.5 py-2">11:00</td><td class="px-2.5 py-2"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Akash Kumar</a></td><td><span class="pill bg-amber-50 text-amber-700">Scheduled</span></td><td>—</td><td>—</td></tr>
-                  <tr><td class="px-2.5 py-2">11:30</td><td class="px-2.5 py-2"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Sanjay Desai</a></td><td><span class="pill bg-amber-50 text-amber-700">Scheduled</span></td><td>—</td><td>—</td></tr>
-                  <tr><td class="px-2.5 py-2">10:15</td><td class="px-2.5 py-2"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Rohit Patel</a></td><td><span class="pill bg-emerald-50 text-emerald-700">Logged</span></td><td>3m 12s</td><td>Connected</td></tr>
-                  <tr><td class="px-2.5 py-2">9:00</td><td class="px-2.5 py-2"><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Vinay Reddy</a></td><td><span class="pill bg-rose-50 text-rose-700">Missed</span></td><td>—</td><td>No answer</td></tr>
-                </tbody>
-              </table>
+          <!-- TABLE (density + pagination + bulk) -->
+          <div data-view-panel="table" data-view-switcher-target="calls" class="hidden">
+            <div class="px-2 pb-1.5 flex items-center justify-between">
+              <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-slate-500 px-1">Density</span>
+                <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
+                  <button class="px-2 py-0.5 rounded bg-white shadow-sm text-slate-900 text-[10px] font-medium">Compact</button>
+                  <button onclick="showToast('Cozy density')" class="px-2 py-0.5 rounded text-slate-600 text-[10px]">Cozy</button>
+                </div>
+              </div>
+              <button onclick="showToast('Choose visible columns…')" class="text-[11px] text-slate-600 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="columns-3" class="w-3.5 h-3.5"></i> Columns</button>
             </div>
+            <div class="px-2 pb-2">
+              <div class="bg-white rounded-xl shadow-card overflow-x-auto">
+                <table class="min-w-full text-[11px]">
+                  <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
+                    <tr>
+                      <th class="px-2 py-2 w-7"><input type="checkbox" class="rounded" /></th>
+                      <th class="px-2 py-2 text-left font-medium">Time</th>
+                      <th class="px-2 py-2 text-left font-medium">Customer</th>
+                      <th class="px-2 py-2 text-left font-medium">Status</th>
+                      <th class="px-2 py-2 text-left font-medium">Duration</th>
+                      <th class="px-2 py-2 text-left font-medium">Disposition</th>
+                      <th class="px-2 py-2 text-left font-medium">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 font-medium">11:00</td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Akash Kumar</a></td><td><span class="pill bg-amber-50 text-amber-700">Scheduled</span></td><td>—</td><td>—</td><td>Naresh N.</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 font-medium">11:30</td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Sanjay Desai</a></td><td><span class="pill bg-amber-50 text-amber-700">Scheduled</span></td><td>—</td><td>—</td><td>Sanjay G.</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 font-medium">10:15</td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Rohit Patel</a></td><td><span class="pill bg-emerald-50 text-emerald-700">Logged</span></td><td>3m 12s</td><td>Connected</td><td>Harish D.</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 font-medium">9:30</td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Deepa Mahadevan</a></td><td><span class="pill bg-amber-50 text-amber-700">Retry</span></td><td>0:08</td><td>Voicemail</td><td>Sanjay G.</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2 font-medium">9:00</td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Vinay Reddy</a></td><td><span class="pill bg-rose-50 text-rose-700">Missed</span></td><td>—</td><td>No answer</td><td>Arun R.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-[11px] px-1.5">
+                <span class="text-slate-500">Rows <select class="border border-slate-200 rounded px-1 py-0.5 ml-1"><option>50</option><option>100</option></select></span>
+                <div class="flex items-center gap-2 text-slate-700"><span>1–5 of 14</span><button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-500"></i></button><button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-700"></i></button></div>
+              </div>
+            </div>
+            <div class="h-24"></div>
           </div>
         </section>
 
@@ -2985,34 +3245,74 @@
              SCREEN — Sales (global, all orders)
              ============================================================ -->
         <section data-screen="sales-list">
-          <div class="px-4 pt-3 pb-2">
+          <!-- Scope + sync -->
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <button onclick="openSheet(scopeSheet)" class="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-lg active:bg-slate-100">
+              <span class="text-[10px] uppercase tracking-wide text-slate-500 font-medium">Scope</span>
+              <span class="text-sm font-semibold text-slate-900">My dealer</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+            </button>
+            <button class="flex items-center gap-1.5 text-[10px] text-slate-500" onclick="showToast('Pulling latest…')">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Synced 3m ago</span>
+            </button>
+          </div>
+
+          <!-- Revenue hero -->
+          <div class="px-4 pb-2">
             <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white rounded-2xl p-4 shadow-card">
               <div class="text-[11px] text-emerald-100">Month-to-date revenue</div>
               <div class="text-2xl font-bold mt-0.5">₹ 24,18,500</div>
               <div class="flex items-center gap-3 mt-2 text-[11px] text-emerald-100">
-                <span class="flex items-center gap-1"><i data-lucide="trending-up" class="w-3 h-3"></i> +18%</span>
+                <span class="flex items-center gap-1"><i data-lucide="trending-up" class="w-3 h-3"></i> +18% vs prev</span>
                 <span>· 62 orders · ₹ 39k avg</span>
               </div>
             </div>
           </div>
 
-          <!-- View mode + filter -->
+          <!-- Per-period stats -->
+          <div class="px-4 pb-2 grid grid-cols-3 gap-2">
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center"><div class="text-base font-bold text-emerald-700">48</div><div class="text-[10px] text-slate-500">Delivered</div></div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center"><div class="text-base font-bold text-sky-700">8</div><div class="text-[10px] text-slate-500">Confirmed</div></div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center"><div class="text-base font-bold text-amber-700">₹ 6.4 L</div><div class="text-[10px] text-slate-500">Outstanding</div></div>
+          </div>
+
+          <!-- Search -->
+          <div class="px-4 pb-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input type="search" placeholder="Search by order #, customer, model…" class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" />
+            </div>
+          </div>
+
+          <!-- Saved views -->
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap flex items-center gap-1"><i data-lucide="star" class="w-3 h-3"></i> All · 62</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="hourglass" class="w-3 h-3"></i> Quotes expiring · 4</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="package" class="w-3 h-3"></i> Awaiting delivery · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="indian-rupee" class="w-3 h-3"></i> Payment due · 3</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> This week · 12</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Save</button>
+          </div>
+
+          <!-- View mode + toolbar -->
           <div class="px-4 pb-2 flex items-center justify-between" data-view-switcher="sales-list">
             <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
               <button data-view-mode="list" class="px-2.5 py-1 rounded-md bg-white shadow-sm text-xs font-medium text-slate-900">List</button>
               <button data-view-mode="board" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Board</button>
               <button data-view-mode="table" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Table</button>
             </div>
-            <button class="flex items-center gap-1 text-xs text-slate-600">
-              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filter
-            </button>
+            <div class="flex items-center gap-0.5">
+              <button onclick="showToast('Sort by date / amount / status')" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="arrow-up-down" class="w-4 h-4 text-slate-600"></i></button>
+              <button onclick="openSheet(filterSheet)" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="sliders-horizontal" class="w-4 h-4 text-slate-600"></i></button>
+              <button onclick="showToast('Export · Density · More')" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="more-vertical" class="w-4 h-4 text-slate-600"></i></button>
+            </div>
           </div>
 
-          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 62</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Delivered · 48</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Confirmed · 8</button>
-            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Quoted · 6</button>
+          <!-- Result count + Select -->
+          <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500">Showing <span class="font-medium text-slate-700">3</span> of <span class="font-medium text-slate-700">62</span></span>
+            <button onclick="showToast('Select mode')" class="text-brand-600 font-medium">Select</button>
           </div>
 
           <!-- LIST -->
@@ -3060,54 +3360,156 @@
             </ul>
           </div>
 
-          <!-- BOARD (Kanban by status) -->
+          <!-- BOARD (Pipeline kanban by status — with WIP, ₹ totals) -->
           <div data-view-panel="board" data-view-switcher-target="sales-list" class="hidden">
+            <div class="px-4 pb-2 flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-500">Group by</span>
+                <select class="border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                  <option>Status</option><option>Owner</option><option>Dealer</option><option>Model</option>
+                </select>
+              </div>
+              <button onclick="showToast('Swimlanes by dealer')" class="flex items-center gap-1 text-slate-600 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="rows-3" class="w-3.5 h-3.5"></i> Swimlanes</button>
+            </div>
             <div class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-24 snap-x snap-mandatory">
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2"><div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Quoted</span><span class="text-[11px] text-slate-500">6</span></div></div>
-                <div class="space-y-2">
+              <!-- Quoted -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-amber-50 text-amber-700">Quoted</span><span class="text-[11px] text-slate-500">6 / 15</span></div>
+                  <button onclick="showToast('+ New quote')" class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-amber-400 rounded-full" style="width:40%"></div></div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card ring-2 ring-amber-200">
+                    <div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-slate-900 truncate">Hero Octane 10X</span><span class="text-[10px] font-semibold text-slate-700">₹ 24k</span></div>
+                    <div class="text-[10px] text-slate-500">Vinay Reddy · #QTE-1844</div>
+                    <div class="text-[10px] text-amber-700 mt-0.5">Expires in 4d</div>
+                  </a>
                   <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Hero Octane 10X</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Vinay Reddy · ₹ 24,000</div>
-                    <div class="text-[10px] text-amber-700 mt-1">Expires in 4d</div>
+                    <div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-slate-900 truncate">Hero Lectro EHX 26</span><span class="text-[10px] font-semibold text-slate-700">₹ 52k</span></div>
+                    <div class="text-[10px] text-slate-500">Suresh K. · #QTE-1846</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Sent 1d</div>
                   </a>
                 </div>
-              </div>
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2"><div class="flex items-center gap-2"><span class="pill bg-sky-50 text-sky-700">Confirmed</span><span class="text-[11px] text-slate-500">8</span></div></div>
-                <div class="space-y-2">
-                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Hero Lectro EHX</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Deepa M. · ₹ 52,000</div>
-                  </a>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>6 quotes</span><span class="font-medium">₹ 2.36 L pipeline</span>
                 </div>
               </div>
-              <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
-                <div class="flex items-center justify-between px-1 mb-2"><div class="flex items-center gap-2"><span class="pill bg-emerald-50 text-emerald-700">Delivered</span><span class="text-[11px] text-slate-500">48</span></div></div>
-                <div class="space-y-2">
+              <!-- Confirmed -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-sky-50 text-sky-700">Confirmed</span><span class="text-[11px] text-slate-500">8 / 20</span></div>
+                </div>
+                <div class="h-0.5 bg-slate-200 rounded-full mb-2"><div class="h-full bg-sky-500 rounded-full" style="width:40%"></div></div>
+                <div class="space-y-2 flex-1">
                   <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
-                    <div class="text-sm font-medium text-slate-900">Hero Sprint Pro</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">Akash Kumar · ₹ 48,500</div>
+                    <div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-slate-900 truncate">Hero Lectro EHX</span><span class="text-[10px] font-semibold text-slate-700">₹ 52k</span></div>
+                    <div class="text-[10px] text-slate-500">Deepa M. · #ORD-2424</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Today 08:10</div>
                   </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>8 confirmed</span><span class="font-medium text-sky-700">₹ 3.24 L</span>
+                </div>
+              </div>
+              <!-- In delivery -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-violet-50 text-violet-700">In delivery</span><span class="text-[11px] text-slate-500">5</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-slate-900 truncate">Hero Sprint Pro</span><span class="text-[10px] font-semibold text-slate-700">₹ 48k</span></div>
+                    <div class="text-[10px] text-slate-500">Manoj K. · #ORD-2422</div>
+                    <div class="text-[10px] text-violet-700 mt-0.5">ETA 30 Apr</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>5 in transit</span><span class="font-medium">₹ 2.18 L</span>
+                </div>
+              </div>
+              <!-- Delivered -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-emerald-50 text-emerald-700">Delivered</span><span class="text-[11px] text-slate-500">48</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card">
+                    <div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-slate-900 truncate">Hero Sprint Pro</span><span class="text-[10px] font-semibold text-emerald-700">₹ 48.5k</span></div>
+                    <div class="text-[10px] text-slate-500">Akash Kumar · #ORD-2425</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Today 09:42</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>48 closed</span><span class="font-medium text-emerald-700">₹ 18.6 L</span>
+                </div>
+              </div>
+              <!-- Cancelled -->
+              <div class="snap-start min-w-[280px] bg-slate-100 rounded-xl p-2.5 flex flex-col">
+                <div class="flex items-center justify-between px-1 mb-1.5">
+                  <div class="flex items-center gap-2"><span class="pill bg-rose-50 text-rose-700">Cancelled</span><span class="text-[11px] text-slate-500">3</span></div>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <a href="#profile/akash-kumar" class="block bg-white rounded-lg p-2.5 shadow-card opacity-80">
+                    <div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-slate-900 truncate">Hero Octane</span><span class="text-[10px] font-semibold text-rose-700 line-through">₹ 24k</span></div>
+                    <div class="text-[10px] text-slate-500">Priya M. · cancelled 2d</div>
+                  </a>
+                </div>
+                <div class="mt-2 px-1 pt-2 text-[10px] text-slate-500 border-t border-slate-200 flex justify-between">
+                  <span>3 cancelled</span><span class="font-medium text-rose-700">₹ 78k lost</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- TABLE -->
-          <div data-view-panel="table" data-view-switcher-target="sales-list" class="hidden px-4 pb-24">
-            <div class="bg-white rounded-xl shadow-card overflow-x-auto">
-              <table class="min-w-full text-[11px]">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
-                  <tr><th class="px-2.5 py-2 text-left font-medium">Order</th><th class="px-2.5 py-2 text-left font-medium">Customer</th><th class="px-2.5 py-2 text-left font-medium">Status</th><th class="px-2.5 py-2 text-right font-medium">Amount</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr><td class="px-2.5 py-2"><div class="font-medium text-slate-900">Hero Sprint Pro</div><div class="text-[10px] text-slate-500">#ORD-2425</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Akash Kumar</a></td><td><span class="pill bg-emerald-50 text-emerald-700">Delivered</span></td><td class="text-right font-semibold">₹ 48,500</td></tr>
-                  <tr><td class="px-2.5 py-2"><div class="font-medium text-slate-900">Hero Lectro EHX 26</div><div class="text-[10px] text-slate-500">#ORD-2424</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Deepa M.</a></td><td><span class="pill bg-sky-50 text-sky-700">Confirmed</span></td><td class="text-right font-semibold">₹ 52,000</td></tr>
-                  <tr><td class="px-2.5 py-2"><div class="font-medium text-slate-900">Hero Octane 10X</div><div class="text-[10px] text-slate-500">#QTE-1844</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Vinay Reddy</a></td><td><span class="pill bg-amber-50 text-amber-700">Quoted</span></td><td class="text-right font-semibold">₹ 24,000</td></tr>
-                </tbody>
-              </table>
+          <!-- TABLE (density + pagination + footer totals) -->
+          <div data-view-panel="table" data-view-switcher-target="sales-list" class="hidden">
+            <div class="px-2 pb-1.5 flex items-center justify-between">
+              <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-slate-500 px-1">Density</span>
+                <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
+                  <button class="px-2 py-0.5 rounded bg-white shadow-sm text-slate-900 text-[10px] font-medium">Compact</button>
+                  <button onclick="showToast('Cozy density')" class="px-2 py-0.5 rounded text-slate-600 text-[10px]">Cozy</button>
+                </div>
+              </div>
+              <button onclick="showToast('Choose visible columns…')" class="text-[11px] text-slate-600 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-slate-100"><i data-lucide="columns-3" class="w-3.5 h-3.5"></i> Columns</button>
             </div>
+            <div class="px-2 pb-2">
+              <div class="bg-white rounded-xl shadow-card overflow-x-auto">
+                <table class="min-w-full text-[11px]">
+                  <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wide">
+                    <tr>
+                      <th class="px-2 py-2 w-7"><input type="checkbox" class="rounded" /></th>
+                      <th class="px-2 py-2 text-left font-medium">Order</th>
+                      <th class="px-2 py-2 text-left font-medium">Customer</th>
+                      <th class="px-2 py-2 text-left font-medium">Dealer</th>
+                      <th class="px-2 py-2 text-left font-medium">Status</th>
+                      <th class="px-2 py-2 text-left font-medium">Date</th>
+                      <th class="px-2 py-2 text-right font-medium">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2"><div class="font-medium text-slate-900">Hero Sprint Pro</div><div class="text-[10px] text-slate-500">#ORD-2425</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Akash Kumar</a></td><td>CK</td><td><span class="pill bg-emerald-50 text-emerald-700">Delivered</span></td><td>Today</td><td class="text-right font-semibold">₹ 48,500</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2"><div class="font-medium text-slate-900">Hero Lectro EHX 26</div><div class="text-[10px] text-slate-500">#ORD-2424</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Deepa M.</a></td><td>CK</td><td><span class="pill bg-sky-50 text-sky-700">Confirmed</span></td><td>Today</td><td class="text-right font-semibold">₹ 52,000</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2"><div class="font-medium text-slate-900">Hero Sprint Pro</div><div class="text-[10px] text-slate-500">#ORD-2422</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Manoj K.</a></td><td>Hero</td><td><span class="pill bg-violet-50 text-violet-700">In delivery</span></td><td>Yesterday</td><td class="text-right font-semibold">₹ 48,500</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2"><div class="font-medium text-slate-900">Hero Octane 10X</div><div class="text-[10px] text-slate-500">#QTE-1844</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Vinay Reddy</a></td><td>Hero</td><td><span class="pill bg-amber-50 text-amber-700">Quoted</span></td><td>Yesterday</td><td class="text-right font-semibold">₹ 24,000</td></tr>
+                    <tr class="hover:bg-slate-50"><td class="px-2 py-2"><input type="checkbox" class="rounded" /></td><td class="px-2 py-2"><div class="font-medium text-slate-900">Hero Lectro EHX 26</div><div class="text-[10px] text-slate-500">#QTE-1846</div></td><td><a href="#profile/akash-kumar" class="text-brand-600 font-medium">Suresh K.</a></td><td>Hero</td><td><span class="pill bg-amber-50 text-amber-700">Quoted</span></td><td>1d</td><td class="text-right font-semibold">₹ 52,000</td></tr>
+                  </tbody>
+                  <tfoot class="bg-slate-50 border-t-2 border-slate-200 text-slate-700 text-[11px] font-medium">
+                    <tr>
+                      <td class="px-2 py-2"></td>
+                      <td class="px-2 py-2" colspan="5">Subtotal · 5 of 62 shown</td>
+                      <td class="px-2 py-2 text-right">₹ 2,25,000</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-[11px] px-1.5">
+                <span class="text-slate-500">Rows <select class="border border-slate-200 rounded px-1 py-0.5 ml-1"><option>50</option><option>100</option></select></span>
+                <div class="flex items-center gap-2 text-slate-700"><span>1–5 of 62</span><button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-500"></i></button><button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-700"></i></button></div>
+              </div>
+            </div>
+            <div class="h-24"></div>
           </div>
         </section>
 
@@ -3485,6 +3887,23 @@
         </ul>
       </div>
 
+      <!-- Bottom-sheet: Customize columns (Customers Table) -->
+      <div id="cols-sheet" class="sheet absolute left-0 right-0 bottom-0 bg-white z-50 rounded-t-2xl shadow-sheet">
+        <div class="flex justify-center pt-2"><div class="w-10 h-1 bg-slate-300 rounded-full"></div></div>
+        <div class="px-4 py-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">Customize columns</h3>
+          <button data-close-sheet class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5 text-slate-700"></i></button>
+        </div>
+        <div class="px-4 pb-2 text-[11px] text-slate-500">Toggle columns. Drag header borders in the table to resize.</div>
+        <ul class="px-2 pb-3 divide-y divide-slate-100" id="col-toggles">
+          <!-- populated by JS from colgroup -->
+        </ul>
+        <div class="px-4 pb-5 grid grid-cols-2 gap-2">
+          <button id="cols-reset" class="py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-700">Reset</button>
+          <button data-close-sheet class="py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium">Done</button>
+        </div>
+      </div>
+
       <!-- Bottom-sheet: Scope (permission/hierarchy) -->
       <div id="scope-sheet" class="sheet absolute left-0 right-0 bottom-0 bg-white z-50 rounded-t-2xl shadow-sheet">
         <div class="flex justify-center pt-2"><div class="w-10 h-1 bg-slate-300 rounded-full"></div></div>
@@ -3843,8 +4262,9 @@
   const filterSheet = document.getElementById('filter-sheet');
   const logSheet = document.getElementById('log-sheet');
   const scopeSheet = document.getElementById('scope-sheet');
+  const colsSheet = document.getElementById('cols-sheet');
   const scrim = document.getElementById('scrim');
-  const ALL_SHEETS = [filterSheet, logSheet, scopeSheet].filter(Boolean);
+  const ALL_SHEETS = [filterSheet, logSheet, scopeSheet, colsSheet].filter(Boolean);
   function openSheet(sheetEl) {
     ALL_SHEETS.forEach(s => s.classList.remove('open'));
     sheetEl.classList.add('open');
@@ -3861,6 +4281,120 @@
   document.getElementById('open-scope')?.addEventListener('click', () => openSheet(scopeSheet));
   document.querySelectorAll('[data-close-sheet]').forEach(b => b.addEventListener('click', closeAllSheets));
   scrim.addEventListener('click', closeAllSheets);
+
+  // ----- Customers table: tag tds with their col, then enable resize/sort/columns -----
+  (function () {
+    const table = document.getElementById('customers-table');
+    if (!table) return;
+    const cols = Array.from(table.querySelectorAll('colgroup col'));
+    // Tag each td with its col name
+    table.querySelectorAll('tbody tr').forEach(tr => {
+      Array.from(tr.children).forEach((td, i) => {
+        if (cols[i]) td.dataset.col = cols[i].dataset.col;
+      });
+    });
+
+    // Click-sort: cycle asc → desc → none. Visual only (no row reorder for proto).
+    table.querySelectorAll('th.col-sortable').forEach(th => {
+      th.addEventListener('click', (e) => {
+        if (e.target.closest('.resize-handle')) return; // don't sort while dragging handle
+        const arrow = th.querySelector('.sort-arrow');
+        const cur = th.dataset.sort || 'none';
+        // Clear other columns
+        table.querySelectorAll('th[data-sort]').forEach(o => {
+          if (o !== th) { delete o.dataset.sort; const a = o.querySelector('.sort-arrow'); if (a) a.textContent = '↕'; }
+        });
+        const next = cur === 'asc' ? 'desc' : (cur === 'desc' ? 'none' : 'asc');
+        if (next === 'none') { delete th.dataset.sort; if (arrow) arrow.textContent = '↕'; }
+        else { th.dataset.sort = next; if (arrow) arrow.textContent = next === 'asc' ? '↑' : '↓'; }
+        if (next !== 'none') showToast(`Sorted by ${th.dataset.col} (${next})`);
+      });
+    });
+
+    // Resize: pointer-driven drag on .resize-handle
+    table.querySelectorAll('th.col-resizable .resize-handle').forEach(handle => {
+      handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const th = handle.closest('th');
+        const colName = th.dataset.col;
+        const col = table.querySelector(`colgroup col[data-col="${colName}"]`);
+        if (!col) return;
+        const startX = e.clientX;
+        const startWidth = parseInt(col.style.width, 10) || th.getBoundingClientRect().width;
+        th.classList.add('resizing');
+        handle.setPointerCapture(e.pointerId);
+        const onMove = (ev) => {
+          const w = Math.max(40, startWidth + (ev.clientX - startX));
+          col.style.width = w + 'px';
+        };
+        const onUp = () => {
+          th.classList.remove('resizing');
+          handle.releasePointerCapture(e.pointerId);
+          handle.removeEventListener('pointermove', onMove);
+          handle.removeEventListener('pointerup', onUp);
+          handle.removeEventListener('pointercancel', onUp);
+        };
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+        handle.addEventListener('pointercancel', onUp);
+      });
+    });
+
+    // Select-all checkbox in table header
+    document.getElementById('select-all-rows')?.addEventListener('change', (e) => {
+      const on = e.target.checked;
+      table.querySelectorAll('tbody input[type=checkbox]').forEach(cb => cb.checked = on);
+    });
+
+    // Columns sheet population
+    const colsSheet = document.getElementById('cols-sheet');
+    const colTogglesUl = document.getElementById('col-toggles');
+    const labels = { name: 'Name', stage: 'Stage', owner: 'Owner', dealer: 'Dealer', last: 'Last activity', revenue: 'Revenue', score: 'Score' };
+    const initialWidths = {};
+    cols.forEach(c => { initialWidths[c.dataset.col] = c.style.width; });
+    function renderColToggles() {
+      colTogglesUl.innerHTML = '';
+      cols.filter(c => c.dataset.col !== 'select').forEach(col => {
+        const colName = col.dataset.col;
+        const isHidden = col.classList.contains('col-hidden');
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <button class="w-full flex items-center gap-3 px-2 py-2.5 active:bg-slate-50 rounded-lg" data-col-toggle="${colName}">
+            <i data-lucide="grip-vertical" class="w-4 h-4 text-slate-300"></i>
+            <span class="flex-1 text-left text-sm text-slate-800">${labels[colName] || colName}</span>
+            <span class="w-10 h-6 rounded-full ${isHidden ? 'bg-slate-200' : 'bg-brand-600'} relative inline-block transition-colors">
+              <span class="absolute ${isHidden ? 'left-0.5' : 'right-0.5'} top-0.5 w-5 h-5 bg-white rounded-full shadow"></span>
+            </span>
+          </button>`;
+        colTogglesUl.appendChild(li);
+      });
+      lucide.createIcons();
+    }
+    function setColHidden(colName, hidden) {
+      const col = table.querySelector(`colgroup col[data-col="${colName}"]`);
+      if (col) col.classList.toggle('col-hidden', hidden);
+      table.querySelectorAll(`th[data-col="${colName}"], td[data-col="${colName}"]`).forEach(el => el.classList.toggle('col-hidden', hidden));
+    }
+    document.getElementById('open-cols')?.addEventListener('click', () => { renderColToggles(); openSheet(colsSheet); });
+    colTogglesUl?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-col-toggle]');
+      if (!btn) return;
+      const colName = btn.dataset.colToggle;
+      const col = table.querySelector(`colgroup col[data-col="${colName}"]`);
+      const willHide = !col.classList.contains('col-hidden');
+      setColHidden(colName, willHide);
+      renderColToggles();
+    });
+    document.getElementById('cols-reset')?.addEventListener('click', () => {
+      cols.forEach(col => {
+        col.classList.remove('col-hidden');
+        if (initialWidths[col.dataset.col]) col.style.width = initialWidths[col.dataset.col];
+      });
+      table.querySelectorAll('th.col-hidden, td.col-hidden').forEach(el => el.classList.remove('col-hidden'));
+      renderColToggles();
+      showToast('Columns reset');
+    });
+  })();
 
   // ----- Scope switching -----
   document.querySelectorAll('#scope-options [data-scope]').forEach(btn => {
