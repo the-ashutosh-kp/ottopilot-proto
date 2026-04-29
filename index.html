@@ -1,0 +1,3006 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#7c3aed" />
+<title>Ottopilot — Customer Profile (Mobile Proto)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        colors: {
+          brand: { 50: '#f5f3ff', 100: '#ede9fe', 500: '#7c3aed', 600: '#6d28d9', 700: '#5b21b6' },
+        },
+        boxShadow: {
+          card: '0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06)',
+          sheet: '0 -8px 24px rgba(15,23,42,0.12)',
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  /* Phone frame — only on wider screens, becomes fullscreen on mobile */
+  @media (min-width: 640px) {
+    .phone-frame {
+      width: 390px;
+      height: 844px;
+      border: 12px solid #0f172a;
+      border-radius: 44px;
+      box-shadow: 0 30px 60px -20px rgba(15,23,42,0.4), 0 18px 30px -10px rgba(15,23,42,0.25);
+      overflow: hidden;
+      position: relative;
+    }
+    .phone-notch {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 130px; height: 28px; background: #0f172a; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; z-index: 60;
+    }
+  }
+  @media (max-width: 639px) {
+    .phone-frame { width: 100vw; height: 100vh; height: 100dvh; }
+    .phone-notch { display: none; }
+    .desktop-hint { display: none; }
+  }
+  .pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; line-height: 16px; }
+  .tab-active { color: #5b21b6; border-color: #7c3aed; }
+  .tab-inactive { color: #64748b; border-color: transparent; }
+  /* Animated bottom sheet */
+  .sheet { transform: translateY(100%); transition: transform .25s ease-out; }
+  .sheet.open { transform: translateY(0); }
+  .scrim { opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  /* Hide screens not active */
+  [data-screen]:not(.active) { display: none; }
+  /* Timeline line */
+  .timeline-rail::before {
+    content: ''; position: absolute; left: 14px; top: 0; bottom: 0; width: 2px; background: #e2e8f0;
+  }
+  /* Toast */
+  .toast { transform: translate(-50%, 200%); transition: transform .3s cubic-bezier(.2,.8,.3,1); }
+  .toast.show { transform: translate(-50%, 0); }
+  /* Skeleton shimmer */
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .skeleton {
+    background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 6px;
+    color: transparent;
+  }
+  /* Dialog */
+  .dialog-backdrop { opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .dialog-backdrop.open { opacity: 1; pointer-events: auto; }
+  .dialog { transform: scale(.95); opacity: 0; transition: all .2s cubic-bezier(.2,.8,.3,1); }
+  .dialog-backdrop.open .dialog { transform: scale(1); opacity: 1; }
+  /* Focus ring */
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #7c3aed; outline-offset: 2px; border-radius: 6px;
+  }
+</style>
+</head>
+<body class="bg-slate-200 sm:bg-slate-300 min-h-screen">
+
+<!-- Desktop hint -->
+<div class="desktop-hint hidden sm:flex justify-center pt-6 pb-2 text-xs text-slate-600">
+  <div class="bg-white/70 px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
+    Mobile-first proto · open on a phone or resize to ≤ 420 px for true mobile feel
+  </div>
+</div>
+
+<div class="flex justify-center items-start sm:items-center min-h-screen sm:py-10">
+  <div class="phone-frame bg-white">
+    <div class="phone-notch"></div>
+
+    <!-- Status / nav stack -->
+    <div class="relative h-full flex flex-col bg-slate-50">
+
+      <!-- App bar -->
+      <header id="appbar" class="flex-none bg-white border-b border-slate-200 z-40">
+        <div class="px-4 pt-7 pb-3 flex items-center gap-3">
+          <button id="back-btn" class="hidden -ml-1 p-1.5 rounded-lg hover:bg-slate-100" aria-label="Back">
+            <i data-lucide="arrow-left" class="w-5 h-5 text-slate-700"></i>
+          </button>
+          <button id="menu-btn" class="-ml-1 p-1.5 rounded-lg hover:bg-slate-100" aria-label="Menu">
+            <i data-lucide="menu" class="w-5 h-5 text-slate-700"></i>
+          </button>
+          <div class="flex-1 min-w-0">
+            <div id="app-title" class="text-base font-semibold text-slate-900 truncate">Customers</div>
+            <div id="app-sub" class="text-[11px] text-slate-500 truncate hidden">Hero Cycles · 3 journeys</div>
+          </div>
+          <button class="p-1.5 rounded-lg hover:bg-slate-100" aria-label="Search">
+            <i data-lucide="search" class="w-5 h-5 text-slate-700"></i>
+          </button>
+          <a href="#notifications" class="p-1.5 rounded-lg hover:bg-slate-100 relative" aria-label="Notifications">
+            <i data-lucide="bell" class="w-5 h-5 text-slate-700"></i>
+            <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Scrollable content area -->
+      <main id="content" class="flex-1 overflow-y-auto">
+
+        <!-- ============================================================
+             SCREEN 1 — Customers list
+             ============================================================ -->
+        <section data-screen="customers" class="active">
+          <!-- Filter pills row -->
+          <div class="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 248</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Active</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Churned</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Converted</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Lost</button>
+          </div>
+
+          <!-- Sort + filter bar -->
+          <div class="px-4 pt-1 pb-3 flex items-center justify-between text-xs">
+            <button class="flex items-center gap-1 text-slate-600">
+              <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i> Last activity
+            </button>
+            <button id="open-filter" class="flex items-center gap-1 text-slate-600">
+              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filters
+              <span class="ml-1 px-1.5 py-0.5 bg-brand-100 text-brand-700 rounded-full text-[10px] font-medium">2</span>
+            </button>
+          </div>
+
+          <!-- Customer rows -->
+          <ul class="px-4 pb-24 space-y-2">
+            <!-- Card 1 -->
+            <li>
+              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5 active:bg-slate-50 transition">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold">AK</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Akash Kumar</div>
+                      <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate">+91 9876543210 · Hero Cycles</div>
+                  </div>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 3 journeys</span>
+                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 12 Apr · 12:30 pm</span>
+                </div>
+              </a>
+            </li>
+
+            <li>
+              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center font-semibold">RP</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Rohit Patel</div>
+                      <span class="pill bg-amber-50 text-amber-700">Churned</span>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate">+91 9123456780 · Metro Cycles</div>
+                  </div>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 1 journey</span>
+                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 2 Apr · 10:15 am</span>
+                </div>
+              </a>
+            </li>
+
+            <li>
+              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 grid place-items-center font-semibold">SD</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Sanjay Desai</div>
+                      <span class="pill bg-violet-50 text-violet-700">Converted</span>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate">+91 9988776655 · States Cycles</div>
+                  </div>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 2 journeys</span>
+                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 28 Mar · 04:42 pm</span>
+                </div>
+              </a>
+            </li>
+
+            <li>
+              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-700 grid place-items-center font-semibold">PM</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Priya Mishra</div>
+                      <span class="pill bg-rose-50 text-rose-700">Lost</span>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate">+91 9765432100 · KKM Showroom</div>
+                  </div>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 1 journey</span>
+                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 22 Mar · 11:00 am</span>
+                </div>
+              </a>
+            </li>
+
+            <li>
+              <a href="#profile/akash-kumar" class="customer-row block bg-white rounded-xl shadow-card p-3.5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold">NN</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-medium text-slate-900 truncate">Naresh Nethaji</div>
+                      <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate">+91 9000111222 · CK Showroom</div>
+                  </div>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                  <span class="flex items-center gap-1"><i data-lucide="route" class="w-3.5 h-3.5"></i> 4 journeys</span>
+                  <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> 18 Mar · 09:20 am</span>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN 2 — Customer Profile (with sub-tabs)
+             ============================================================ -->
+        <section data-screen="profile">
+
+          <!-- Profile header -->
+          <div class="bg-gradient-to-b from-brand-50 via-white to-white border-b border-slate-200">
+            <div class="px-4 pt-4 pb-3">
+              <!-- Identity row -->
+              <div class="flex items-start gap-3">
+                <div class="relative">
+                  <div class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xl ring-4 ring-white">AK</div>
+                  <span class="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5">
+                    <i data-lucide="badge-check" class="w-4 h-4 text-emerald-500"></i>
+                  </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h1 class="text-xl font-bold text-slate-900 leading-tight">Akash Kumar</h1>
+                  <div class="text-[11px] text-slate-500 mt-0.5">CUST-00482 · Joined 12 Oct 2025</div>
+                  <div class="flex items-center gap-1.5 flex-wrap mt-1.5">
+                    <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                    <span class="pill bg-violet-50 text-violet-700">High intent</span>
+                    <span class="pill bg-slate-100 text-slate-700">Returning</span>
+                  </div>
+                </div>
+                <button class="p-1.5 -mr-1 rounded-lg hover:bg-slate-100" aria-label="More">
+                  <i data-lucide="more-vertical" class="w-5 h-5 text-slate-700"></i>
+                </button>
+              </div>
+
+              <!-- Contact row -->
+              <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <a href="tel:+919876543210" class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white ring-1 ring-slate-200 active:bg-slate-50">
+                  <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-500 flex-none"></i>
+                  <span class="text-slate-700 truncate">+91 98765 43210</span>
+                </a>
+                <a href="mailto:akash@example.com" class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white ring-1 ring-slate-200 active:bg-slate-50">
+                  <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-500 flex-none"></i>
+                  <span class="text-slate-700 truncate">akash@example.com</span>
+                </a>
+                <div class="col-span-2 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white ring-1 ring-slate-200">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500 flex-none"></i>
+                  <span class="text-slate-700 truncate">Sector 18, Noida, UP — 201301</span>
+                </div>
+              </div>
+
+              <!-- Meta row -->
+              <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                <span class="flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i> Website</span>
+                <span class="flex items-center gap-1"><i data-lucide="user" class="w-3 h-3"></i> Naresh N.</span>
+                <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> 2h ago</span>
+              </div>
+
+              <!-- Quick actions -->
+              <div class="mt-3 grid grid-cols-4 gap-1.5">
+                <button class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-brand-50 active:bg-brand-100">
+                  <i data-lucide="phone" class="w-4 h-4 text-brand-600"></i>
+                  <span class="text-[11px] font-medium text-brand-700">Call</span>
+                </button>
+                <button class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-emerald-50 active:bg-emerald-100">
+                  <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
+                  <span class="text-[11px] font-medium text-emerald-700">WhatsApp</span>
+                </button>
+                <button class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-sky-50 active:bg-sky-100">
+                  <i data-lucide="calendar-plus" class="w-4 h-4 text-sky-600"></i>
+                  <span class="text-[11px] font-medium text-sky-700">Schedule</span>
+                </button>
+                <button class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-amber-50 active:bg-amber-100">
+                  <i data-lucide="bike" class="w-4 h-4 text-amber-600"></i>
+                  <span class="text-[11px] font-medium text-amber-700">Test ride</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab strip (sticky) -->
+          <div class="sticky top-0 z-30 bg-white border-b border-slate-200">
+            <nav class="flex overflow-x-auto no-scrollbar px-2 text-sm font-medium" id="sub-tabs">
+              <button data-tab="overview" class="px-3 py-2.5 border-b-2 tab-active whitespace-nowrap">Overview</button>
+              <button data-tab="journeys" class="px-3 py-2.5 border-b-2 tab-inactive whitespace-nowrap">Journeys</button>
+              <button data-tab="events" class="px-3 py-2.5 border-b-2 tab-inactive whitespace-nowrap">Events</button>
+              <button data-tab="sales" class="px-3 py-2.5 border-b-2 tab-inactive whitespace-nowrap">Sales</button>
+              <button data-tab="notes" class="px-3 py-2.5 border-b-2 tab-inactive whitespace-nowrap">Notes</button>
+              <button data-tab="logs" class="px-3 py-2.5 border-b-2 tab-inactive whitespace-nowrap">Logs</button>
+            </nav>
+          </div>
+
+          <!-- ----- Tab: OVERVIEW ----- -->
+          <div data-tab-panel="overview" class="px-4 py-4 space-y-4">
+
+            <!-- Lifecycle progress -->
+            <div class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-semibold text-slate-700">Lifecycle stage</div>
+                <span class="pill bg-violet-50 text-violet-700">Engaged</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="flex-1 h-1.5 bg-emerald-500 rounded-full"></div>
+                <div class="flex-1 h-1.5 bg-emerald-500 rounded-full"></div>
+                <div class="flex-1 h-1.5 bg-emerald-500 rounded-full"></div>
+                <div class="flex-1 h-1.5 bg-slate-200 rounded-full"></div>
+                <div class="flex-1 h-1.5 bg-slate-200 rounded-full"></div>
+              </div>
+              <div class="flex justify-between mt-1.5 text-[10px] text-slate-500">
+                <span>Lead</span><span>Qualified</span><span>Engaged</span><span>Test ride</span><span>Customer</span>
+              </div>
+            </div>
+
+            <!-- KPI grid -->
+            <div class="grid grid-cols-5 gap-1.5">
+              <div class="rounded-lg bg-amber-50 p-2 text-center">
+                <div class="text-base font-bold text-amber-700">4</div>
+                <div class="text-[9px] text-amber-700/80 leading-tight">Leads</div>
+              </div>
+              <div class="rounded-lg bg-sky-50 p-2 text-center">
+                <div class="text-base font-bold text-sky-700">12</div>
+                <div class="text-[9px] text-sky-700/80 leading-tight">Calls</div>
+              </div>
+              <div class="rounded-lg bg-pink-50 p-2 text-center">
+                <div class="text-base font-bold text-pink-700">3</div>
+                <div class="text-[9px] text-pink-700/80 leading-tight">Walk-ins</div>
+              </div>
+              <div class="rounded-lg bg-violet-50 p-2 text-center">
+                <div class="text-base font-bold text-violet-700">2</div>
+                <div class="text-[9px] text-violet-700/80 leading-tight">Test rides</div>
+              </div>
+              <div class="rounded-lg bg-emerald-50 p-2 text-center">
+                <div class="text-base font-bold text-emerald-700">1</div>
+                <div class="text-[9px] text-emerald-700/80 leading-tight">Sales</div>
+              </div>
+            </div>
+
+            <!-- Snapshot stats -->
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-[11px] text-slate-500">Total revenue</div>
+                  <span class="text-[10px] text-emerald-600 flex items-center gap-0.5">
+                    <i data-lucide="trending-up" class="w-3 h-3"></i> +12%
+                  </span>
+                </div>
+                <div class="text-base font-semibold text-slate-900 mt-0.5">₹ 1,24,500</div>
+              </div>
+              <div class="bg-white rounded-xl shadow-card p-3">
+                <div class="text-[11px] text-slate-500">Last contacted</div>
+                <div class="text-sm font-medium text-slate-900 mt-0.5">2 hours ago</div>
+                <div class="text-[10px] text-slate-500">Call · Naresh N.</div>
+              </div>
+            </div>
+
+            <!-- Preferences -->
+            <div class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-slate-900">Preferences</h3>
+                <button class="text-xs text-brand-600 font-medium">Edit</button>
+              </div>
+              <dl class="space-y-1.5 text-xs">
+                <div class="flex justify-between gap-3">
+                  <dt class="text-slate-500">Preferred contact</dt>
+                  <dd class="text-slate-800 font-medium">WhatsApp</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-slate-500">Best time</dt>
+                  <dd class="text-slate-800 font-medium">11:00 – 13:00</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-slate-500">Preferred dealer</dt>
+                  <dd class="text-slate-800 font-medium">Hero Cycles</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-slate-500">Interested in</dt>
+                  <dd class="text-slate-800 font-medium text-right">Electric · 26"</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-slate-500">Budget</dt>
+                  <dd class="text-slate-800 font-medium">₹ 40k – 60k</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Recent activity preview -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-slate-900">Recent activity</h3>
+                <button class="text-xs text-brand-600 font-medium" onclick="document.querySelector('#sub-tabs button[data-tab=logs]').click()">See all</button>
+              </div>
+              <ol class="relative timeline-rail pl-9 space-y-2">
+                <li class="relative">
+                  <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-violet-100 text-violet-700 grid place-items-center ring-4 ring-slate-50">
+                    <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+                  </span>
+                  <div class="bg-white rounded-xl shadow-card p-3">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-sm font-medium text-slate-900">Call · Connected</span>
+                      <span class="text-[10px] text-slate-500">2h ago</span>
+                    </div>
+                    <div class="text-[11px] text-slate-600 mt-0.5">"Wants test ride this weekend"</div>
+                  </div>
+                </li>
+                <li class="relative">
+                  <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center ring-4 ring-slate-50">
+                    <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                  </span>
+                  <div class="bg-white rounded-xl shadow-card p-3">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-sm font-medium text-slate-900">Disposition → High intent</span>
+                      <span class="text-[10px] text-slate-500">2h ago</span>
+                    </div>
+                    <div class="text-[11px] text-slate-600 mt-0.5">Updated by Harish Dev</div>
+                  </div>
+                </li>
+                <li class="relative">
+                  <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-pink-100 text-pink-700 grid place-items-center ring-4 ring-slate-50">
+                    <i data-lucide="store" class="w-3.5 h-3.5"></i>
+                  </span>
+                  <div class="bg-white rounded-xl shadow-card p-3">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-sm font-medium text-slate-900">Walk-in · Hero Cycles</span>
+                      <span class="text-[10px] text-slate-500">Yesterday</span>
+                    </div>
+                    <div class="text-[11px] text-slate-600 mt-0.5">11:00 – 11:15 · Naresh N.</div>
+                  </div>
+                </li>
+              </ol>
+            </div>
+
+            <!-- Showrooms -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-slate-900">Showrooms <span class="text-slate-500 font-normal">(6)</span></h3>
+                <button class="text-xs text-brand-600 font-medium">View all</button>
+              </div>
+              <ul class="space-y-2">
+                <li class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center flex-none">
+                      <i data-lucide="store" class="w-4 h-4 text-violet-700"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="font-medium text-sm text-slate-900 truncate">Hero Cycles Showroom</div>
+                        <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                      </div>
+                      <div class="text-[11px] text-slate-500 mt-0.5">3 journeys · Last visit 12 Oct, 12:30</div>
+                    </div>
+                  </div>
+                </li>
+                <li class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center flex-none">
+                      <i data-lucide="store" class="w-4 h-4 text-violet-700"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="font-medium text-sm text-slate-900 truncate">CK Showroom</div>
+                        <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                      </div>
+                      <div class="text-[11px] text-slate-500 mt-0.5">3 journeys · Last visit 15 Oct, 14:30</div>
+                    </div>
+                  </div>
+                </li>
+                <li class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center flex-none">
+                      <i data-lucide="store" class="w-4 h-4 text-violet-700"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="font-medium text-sm text-slate-900 truncate">Metro Cycles Showroom</div>
+                        <span class="pill bg-amber-50 text-amber-700">Inactive</span>
+                      </div>
+                      <div class="text-[11px] text-slate-500 mt-0.5">3 journeys · Last visit 12 Oct, 12:30</div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Tags / segments -->
+            <div class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-slate-900">Tags & segments</h3>
+                <button class="text-xs text-brand-600 font-medium">+ Add</button>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="pill bg-slate-100 text-slate-700">EV-curious</span>
+                <span class="pill bg-slate-100 text-slate-700">Premium-budget</span>
+                <span class="pill bg-slate-100 text-slate-700">Weekend-rider</span>
+                <span class="pill bg-slate-100 text-slate-700">Referred</span>
+              </div>
+            </div>
+
+            <!-- Danger zone / Transfer -->
+            <div class="bg-white rounded-xl shadow-card p-3.5">
+              <h3 class="text-sm font-semibold text-slate-900 mb-2">Manage</h3>
+              <ul class="divide-y divide-slate-100 -mx-1">
+                <li>
+                  <button class="w-full flex items-center gap-3 px-1 py-2.5 text-left">
+                    <i data-lucide="user-cog" class="w-4 h-4 text-slate-500"></i>
+                    <span class="flex-1 text-sm text-slate-800">Reassign owner</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                  </button>
+                </li>
+                <li>
+                  <a href="#transfer" class="w-full flex items-center gap-3 px-1 py-2.5 text-left">
+                    <i data-lucide="arrow-right-left" class="w-4 h-4 text-slate-500"></i>
+                    <span class="flex-1 text-sm text-slate-800">Transfer to another owner</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                  </a>
+                </li>
+                <li>
+                  <button class="w-full flex items-center gap-3 px-1 py-2.5 text-left">
+                    <i data-lucide="archive" class="w-4 h-4 text-slate-500"></i>
+                    <span class="flex-1 text-sm text-slate-800">Archive customer</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                  </button>
+                </li>
+                <li>
+                  <button onclick="confirmAction({ title: 'Mark as do-not-contact?', body: 'Akash Kumar will be removed from all outreach queues. You can reverse this from the customer profile.', confirmLabel: 'Mark DNC', danger: true, onConfirm: () => showToast('Customer marked DNC') })" class="w-full flex items-center gap-3 px-1 py-2.5 text-left text-rose-700">
+                    <i data-lucide="user-x" class="w-4 h-4"></i>
+                    <span class="flex-1 text-sm">Mark as do-not-contact</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-rose-300"></i>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+
+          <!-- ----- Tab: JOURNEYS ----- -->
+          <div data-tab-panel="journeys" class="hidden px-4 py-4 space-y-3">
+
+            <!-- Dealer chips -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+              <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 3</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Hero Cycles</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">CK</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Metro</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">States</button>
+            </div>
+
+            <!-- Journey cards with stage progress -->
+            <ul class="space-y-3">
+              <!-- J1 — Active -->
+              <li class="bg-white rounded-xl shadow-card overflow-hidden">
+                <div class="px-3.5 pt-3 pb-3">
+                  <div class="flex items-start justify-between gap-2 mb-2.5">
+                    <div class="flex items-start gap-2 min-w-0">
+                      <span class="w-7 h-7 rounded-md bg-slate-900 text-white grid place-items-center text-[11px] font-semibold flex-none">J1</span>
+                      <div class="min-w-0">
+                        <div class="text-sm font-medium text-slate-900 truncate">Hero Cycles Showroom</div>
+                        <div class="text-[11px] text-slate-500">Created 12 Dec 2025 · Naresh N.</div>
+                      </div>
+                    </div>
+                    <span class="pill bg-emerald-50 text-emerald-700 flex-none">Active</span>
+                  </div>
+                  <!-- Stage progress -->
+                  <div class="flex items-center gap-1">
+                    <div class="flex-1 h-1 bg-emerald-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-emerald-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-emerald-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-emerald-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-slate-200 rounded-full"></div>
+                  </div>
+                  <div class="flex justify-between mt-1 text-[10px] text-slate-500">
+                    <span>Lead</span><span>Walk-in</span><span>Quote</span><span>Test ride</span><span>Sale</span>
+                  </div>
+                </div>
+                <div class="border-t border-slate-100 px-3.5 py-2.5 bg-slate-50 grid grid-cols-4 text-center text-[11px]">
+                  <div><div class="font-semibold text-slate-900">1</div><div class="text-slate-500">Leads</div></div>
+                  <div><div class="font-semibold text-slate-900">2</div><div class="text-slate-500">Calls</div></div>
+                  <div><div class="font-semibold text-slate-900">3</div><div class="text-slate-500">Walk-ins</div></div>
+                  <div><div class="font-semibold text-slate-900">4</div><div class="text-slate-500">Sales</div></div>
+                </div>
+                <div class="border-t border-slate-100 px-3.5 py-2 flex items-center justify-between text-[11px]">
+                  <span class="text-slate-600">Next step: <span class="font-medium text-slate-900">Schedule test ride</span></span>
+                  <button class="text-brand-600 font-medium">Open ›</button>
+                </div>
+              </li>
+
+              <!-- J2 — Churned -->
+              <li class="bg-white rounded-xl shadow-card overflow-hidden">
+                <div class="px-3.5 pt-3 pb-3">
+                  <div class="flex items-start justify-between gap-2 mb-2.5">
+                    <div class="flex items-start gap-2 min-w-0">
+                      <span class="w-7 h-7 rounded-md bg-slate-200 text-slate-700 grid place-items-center text-[11px] font-semibold flex-none">J2</span>
+                      <div class="min-w-0">
+                        <div class="text-sm font-medium text-slate-900 truncate">Metro Cycles</div>
+                        <div class="text-[11px] text-slate-500">Created 12 Dec 2025 · Naresh N.</div>
+                      </div>
+                    </div>
+                    <span class="pill bg-amber-50 text-amber-700 flex-none">Churned</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <div class="flex-1 h-1 bg-amber-400 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-amber-400 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-slate-200 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-slate-200 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-slate-200 rounded-full"></div>
+                  </div>
+                  <div class="flex justify-between mt-1 text-[10px] text-slate-500">
+                    <span>Lead</span><span>Walk-in</span><span>Quote</span><span>Test ride</span><span>Sale</span>
+                  </div>
+                </div>
+                <div class="border-t border-slate-100 px-3.5 py-2 flex items-center justify-between text-[11px]">
+                  <span class="text-slate-600">Reason: <span class="font-medium text-slate-900">No response after 3 attempts</span></span>
+                  <button class="text-brand-600 font-medium">Re-open ›</button>
+                </div>
+              </li>
+
+              <!-- J3 — Converted -->
+              <li class="bg-white rounded-xl shadow-card overflow-hidden">
+                <div class="px-3.5 pt-3 pb-3">
+                  <div class="flex items-start justify-between gap-2 mb-2.5">
+                    <div class="flex items-start gap-2 min-w-0">
+                      <span class="w-7 h-7 rounded-md bg-violet-600 text-white grid place-items-center text-[11px] font-semibold flex-none">J3</span>
+                      <div class="min-w-0">
+                        <div class="text-sm font-medium text-slate-900 truncate">CK Showroom</div>
+                        <div class="text-[11px] text-slate-500">Created 12 Dec 2025 · Naresh N.</div>
+                      </div>
+                    </div>
+                    <span class="pill bg-violet-50 text-violet-700 flex-none">Converted</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <div class="flex-1 h-1 bg-violet-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-violet-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-violet-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-violet-500 rounded-full"></div>
+                    <div class="flex-1 h-1 bg-violet-500 rounded-full"></div>
+                  </div>
+                  <div class="flex justify-between mt-1 text-[10px] text-slate-500">
+                    <span>Lead</span><span>Walk-in</span><span>Quote</span><span>Test ride</span><span>Sale</span>
+                  </div>
+                </div>
+                <div class="border-t border-slate-100 px-3.5 py-2 flex items-center justify-between text-[11px]">
+                  <span class="text-slate-600">Sale: <span class="font-medium text-slate-900">Hero Sprint Pro · ₹ 48,500</span></span>
+                  <button class="text-brand-600 font-medium">View ›</button>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- ----- Tab: EVENTS (view-mode switcher) ----- -->
+          <div data-tab-panel="events" class="hidden">
+            <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+              <div class="flex items-center gap-1.5 bg-slate-100 rounded-lg p-0.5" id="event-modes">
+                <button data-mode="list" class="event-mode-btn px-2.5 py-1 rounded-md bg-white shadow-sm text-xs font-medium text-slate-900">List</button>
+                <button data-mode="day" class="event-mode-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Day</button>
+                <button data-mode="board" class="event-mode-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-600">Board</button>
+              </div>
+              <button id="open-filter-events" class="flex items-center gap-1 text-xs text-slate-600">
+                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filter
+              </button>
+            </div>
+
+            <!-- LIST mode -->
+            <div data-mode-panel="list" class="px-4 pb-4 space-y-2">
+              <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-2">Today, 20 Oct</div>
+              <div class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="pill bg-sky-50 text-sky-700">Logged</span>
+                  <span class="text-[11px] text-slate-500">11:00 – 11:15</span>
+                </div>
+                <div class="text-sm font-medium text-slate-900">Walk-in</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Hero Cycles · J1 · Naresh N.</div>
+              </div>
+              <div class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="pill bg-amber-50 text-amber-700">Scheduled</span>
+                  <span class="text-[11px] text-slate-500">11:30 – 12:00</span>
+                </div>
+                <div class="text-sm font-medium text-slate-900">Test ride</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Hero Cycles · J1 · Naresh N.</div>
+              </div>
+              <div class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="pill bg-rose-50 text-rose-700">Cancelled</span>
+                  <span class="text-[11px] text-slate-500">13:00 – 14:15</span>
+                </div>
+                <div class="text-sm font-medium text-slate-900">Call</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Hero Cycles · J1 · System</div>
+              </div>
+
+              <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-4">Yesterday, 19 Oct</div>
+              <div class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="pill bg-sky-50 text-sky-700">Logged</span>
+                  <span class="text-[11px] text-slate-500">15:45</span>
+                </div>
+                <div class="text-sm font-medium text-slate-900">Call</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Metro Cycles · J2 · Harish Dev</div>
+              </div>
+            </div>
+
+            <!-- DAY mode (calendar list) -->
+            <div data-mode-panel="day" class="hidden px-4 pb-4">
+              <div class="flex items-center justify-between mb-2">
+                <button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-600"></i></button>
+                <div class="text-sm font-medium text-slate-900">Tue, 20 Oct 2025</div>
+                <button class="p-1 rounded hover:bg-slate-100"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i></button>
+              </div>
+              <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                <div class="grid grid-cols-[56px_1fr] divide-y divide-slate-100">
+                  <!-- 09 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">09:00</div>
+                  <div class="py-2"></div>
+                  <!-- 10 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">10:00</div>
+                  <div class="py-2"></div>
+                  <!-- 11 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">11:00</div>
+                  <div class="py-2 px-2 space-y-1">
+                    <div class="text-[11px] bg-sky-50 text-sky-800 rounded px-2 py-1 border-l-2 border-sky-500">Walk-in · 11:00–11:15</div>
+                    <div class="text-[11px] bg-amber-50 text-amber-800 rounded px-2 py-1 border-l-2 border-amber-500">Test ride · 11:30–12:00</div>
+                  </div>
+                  <!-- 12 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">12:00</div>
+                  <div class="py-2"></div>
+                  <!-- 13 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">13:00</div>
+                  <div class="py-2 px-2">
+                    <div class="text-[11px] bg-rose-50 text-rose-800 rounded px-2 py-1 border-l-2 border-rose-500">Call · 13:00–14:15 (cancelled)</div>
+                  </div>
+                  <!-- 14 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">14:00</div>
+                  <div class="py-2"></div>
+                  <!-- 15 -->
+                  <div class="px-2 py-3 text-[11px] text-slate-500 text-right">15:00</div>
+                  <div class="py-2"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- BOARD mode (kanban) -->
+            <div data-mode-panel="board" class="hidden">
+              <div class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-4 snap-x snap-mandatory">
+                <!-- Logged column -->
+                <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
+                  <div class="flex items-center justify-between px-1 mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="pill bg-sky-50 text-sky-700">Logged</span>
+                      <span class="text-[11px] text-slate-500">3</span>
+                    </div>
+                    <button class="p-1 rounded hover:bg-slate-200"><i data-lucide="plus" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="bg-white rounded-lg p-2.5 shadow-card">
+                      <div class="text-sm font-medium text-slate-900">Walk-in</div>
+                      <div class="text-[11px] text-slate-500 mt-1">Hero Cycles · J1 · 11:00</div>
+                    </div>
+                    <div class="bg-white rounded-lg p-2.5 shadow-card">
+                      <div class="text-sm font-medium text-slate-900">Walk-in</div>
+                      <div class="text-[11px] text-slate-500 mt-1">Hero Cycles · J1 · 11:15</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Scheduled column -->
+                <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
+                  <div class="flex items-center justify-between px-1 mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="pill bg-amber-50 text-amber-700">Scheduled</span>
+                      <span class="text-[11px] text-slate-500">2</span>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="bg-white rounded-lg p-2.5 shadow-card">
+                      <div class="text-sm font-medium text-slate-900">Test ride</div>
+                      <div class="text-[11px] text-slate-500 mt-1">Hero Cycles · J1 · 11:30</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Cancelled column -->
+                <div class="snap-start min-w-[260px] bg-slate-100 rounded-xl p-2.5">
+                  <div class="flex items-center justify-between px-1 mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="pill bg-rose-50 text-rose-700">Cancelled</span>
+                      <span class="text-[11px] text-slate-500">1</span>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="bg-white rounded-lg p-2.5 shadow-card">
+                      <div class="text-sm font-medium text-slate-900">Call</div>
+                      <div class="text-[11px] text-slate-500 mt-1">Hero Cycles · J1 · 13:00</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ----- Tab: SALES ----- -->
+          <div data-tab-panel="sales" class="hidden px-4 py-4 space-y-3">
+            <!-- Revenue summary -->
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white rounded-2xl p-4 shadow-card">
+              <div class="text-[11px] text-emerald-100">Lifetime revenue</div>
+              <div class="text-2xl font-bold mt-0.5">₹ 1,24,500</div>
+              <div class="flex items-center gap-2 mt-2 text-[11px] text-emerald-100">
+                <span class="flex items-center gap-1"><i data-lucide="trending-up" class="w-3 h-3"></i> +12% vs prev period</span>
+                <span>·</span>
+                <span>3 orders</span>
+              </div>
+            </div>
+
+            <!-- Per-period stats -->
+            <div class="grid grid-cols-3 gap-2">
+              <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+                <div class="text-[10px] text-slate-500">Avg order</div>
+                <div class="text-sm font-semibold text-slate-900 mt-0.5">₹ 41,500</div>
+              </div>
+              <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+                <div class="text-[10px] text-slate-500">Last order</div>
+                <div class="text-sm font-semibold text-slate-900 mt-0.5">18 Mar</div>
+              </div>
+              <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+                <div class="text-[10px] text-slate-500">Outstanding</div>
+                <div class="text-sm font-semibold text-amber-700 mt-0.5">₹ 24,000</div>
+              </div>
+            </div>
+
+            <!-- Order list -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-slate-900">Orders <span class="text-slate-500 font-normal">(3)</span></h3>
+                <button class="text-xs text-brand-600 font-medium">+ New</button>
+              </div>
+              <ul class="space-y-2">
+                <li class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-slate-900 truncate">Hero Sprint Pro</div>
+                      <div class="text-[11px] text-slate-500 mt-0.5">#ORD-2425 · CK Showroom · 18 Mar</div>
+                    </div>
+                    <div class="text-right flex-none">
+                      <div class="text-sm font-semibold text-slate-900">₹ 48,500</div>
+                      <span class="pill bg-emerald-50 text-emerald-700 mt-1">Delivered</span>
+                    </div>
+                  </div>
+                </li>
+                <li class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-slate-900 truncate">Hero Lectro EHX 26</div>
+                      <div class="text-[11px] text-slate-500 mt-0.5">#ORD-2392 · CK Showroom · 02 Feb</div>
+                    </div>
+                    <div class="text-right flex-none">
+                      <div class="text-sm font-semibold text-slate-900">₹ 52,000</div>
+                      <span class="pill bg-emerald-50 text-emerald-700 mt-1">Delivered</span>
+                    </div>
+                  </div>
+                </li>
+                <li class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-slate-900 truncate">Hero Octane 10X</div>
+                      <div class="text-[11px] text-slate-500 mt-0.5">#QTE-1844 · Hero Cycles · 28 Jan</div>
+                    </div>
+                    <div class="text-right flex-none">
+                      <div class="text-sm font-semibold text-slate-900">₹ 24,000</div>
+                      <span class="pill bg-amber-50 text-amber-700 mt-1">Quoted</span>
+                    </div>
+                  </div>
+                  <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-500">Quote expires in 4 days</span>
+                    <button class="text-brand-600 font-medium">Send reminder</button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ----- Tab: NOTES ----- -->
+          <div data-tab-panel="notes" class="hidden px-4 py-4 space-y-3">
+            <button class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white shadow-card text-sm text-slate-500 active:bg-slate-50">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Add note…</span>
+              <i data-lucide="paperclip" class="w-4 h-4 ml-auto text-slate-400"></i>
+            </button>
+
+            <ul class="space-y-2">
+              <li class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-violet-100 text-violet-700 grid place-items-center text-[10px] font-semibold">HD</div>
+                    <div class="text-xs font-medium text-slate-900">Harish Dev</div>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-[10px] text-slate-500">2h ago</span>
+                    <button class="p-1 rounded hover:bg-slate-100"><i data-lucide="more-horizontal" class="w-3.5 h-3.5 text-slate-500"></i></button>
+                  </div>
+                </div>
+                <p class="text-[13px] text-slate-700 leading-snug">Customer asked about EMI options. Looking for ~₹50K range. Wants to test ride this weekend at CK showroom. Prefers WhatsApp follow-up.</p>
+                <div class="mt-2 flex items-center gap-1.5">
+                  <span class="pill bg-sky-50 text-sky-700">Follow-up</span>
+                  <span class="pill bg-amber-50 text-amber-700">Pinned</span>
+                </div>
+              </li>
+
+              <li class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">NN</div>
+                    <div class="text-xs font-medium text-slate-900">Naresh Nethaji</div>
+                  </div>
+                  <span class="text-[10px] text-slate-500">Yesterday</span>
+                </div>
+                <p class="text-[13px] text-slate-700 leading-snug">Walk-in at Hero Cycles. Showed interest in Sprint Pro and Lectro EHX. Will compare specs and revert in 2-3 days.</p>
+                <div class="mt-2 flex items-center gap-1.5">
+                  <span class="pill bg-pink-50 text-pink-700">Walk-in</span>
+                </div>
+              </li>
+
+              <li class="bg-white rounded-xl shadow-card p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] font-semibold">NN</div>
+                    <div class="text-xs font-medium text-slate-900">Naresh Nethaji</div>
+                  </div>
+                  <span class="text-[10px] text-slate-500">12 Oct</span>
+                </div>
+                <p class="text-[13px] text-slate-700 leading-snug">First contact via website form. Lives in Sector 18 Noida. Initial budget ₹40-60K.</p>
+              </li>
+            </ul>
+          </div>
+
+          <!-- ----- Tab: LOGS (timeline) ----- -->
+          <div data-tab-panel="logs" class="hidden px-4 py-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-slate-900">Activity logs</h3>
+              <button class="text-xs text-slate-600 flex items-center gap-1">
+                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filter
+              </button>
+            </div>
+
+            <!-- Type filter chips -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 mb-3">
+              <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Calls</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Walk-ins</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Test rides</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Disposition</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">System</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Errors</button>
+            </div>
+
+            <ol class="relative timeline-rail pl-9 space-y-3">
+              <!-- Lead Creation -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-sky-100 text-sky-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Lead Creation</span>
+                      <span class="pill bg-sky-50 text-sky-700">Logged</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-slate-600 space-y-0.5">
+                    <div><span class="text-slate-400">Dealer:</span> Metro Masti showroom</div>
+                    <div><span class="text-slate-400">Sequence:</span> J1</div>
+                    <div><span class="text-slate-400">By:</span> Harish Dev</div>
+                  </div>
+                </div>
+              </li>
+
+              <!-- Journey Creation -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="route" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Journey Creation</span>
+                      <span class="pill bg-emerald-50 text-emerald-700">Live</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-slate-600 space-y-0.5">
+                    <div><span class="text-slate-400">Dealer:</span> Metro Masti showroom</div>
+                    <div><span class="text-slate-400">Source:</span> Walk-in</div>
+                  </div>
+                </div>
+              </li>
+
+              <!-- Call -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-violet-100 text-violet-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Call</span>
+                      <span class="pill bg-emerald-50 text-emerald-700">Connected</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-slate-600">
+                    <div><span class="text-slate-400">Disposition:</span> Connected</div>
+                    <div><span class="text-slate-400">Remarks:</span> Needed testride</div>
+                  </div>
+                </div>
+              </li>
+
+              <!-- Disposition change High Intent -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Disposition change</span>
+                      <span class="pill bg-emerald-50 text-emerald-700">High intent</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-slate-600">
+                    Status: <span class="text-slate-500 line-through">Call back later</span>
+                    <i data-lucide="arrow-right" class="inline w-3 h-3 mx-0.5"></i>
+                    <span class="font-medium text-slate-800">High intent</span>
+                  </div>
+                </div>
+              </li>
+
+              <!-- Ownership change -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-slate-100 text-slate-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="user-cog" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-sm font-medium text-slate-900">Ownership change</span>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-slate-600">
+                    Owner: <span class="text-slate-500 line-through">Sanjay</span>
+                    <i data-lucide="arrow-right" class="inline w-3 h-3 mx-0.5"></i>
+                    <span class="font-medium text-slate-800">Arun</span>
+                  </div>
+                </div>
+              </li>
+
+              <!-- Disposition change Lost -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-rose-100 text-rose-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Disposition change</span>
+                      <span class="pill bg-rose-50 text-rose-700">Lost</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-slate-500">By System</div>
+                </div>
+              </li>
+
+              <!-- Lead creation error -->
+              <li class="relative">
+                <span class="absolute -left-9 top-1.5 w-7 h-7 rounded-full bg-rose-100 text-rose-700 grid place-items-center ring-4 ring-slate-50">
+                  <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                </span>
+                <div class="bg-white rounded-xl shadow-card p-3 border border-rose-200">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Lead Creation</span>
+                      <span class="pill bg-rose-50 text-rose-700">Error</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">12 Apr 12:30</span>
+                  </div>
+                  <div class="mt-1.5 text-[11px] text-rose-700">Lead Creation Failed</div>
+                  <button class="mt-2 text-[11px] font-medium text-brand-600">Retry</button>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Leads
+             ============================================================ -->
+        <section data-screen="leads">
+          <!-- Hero stats -->
+          <div class="px-4 pt-3 pb-2 grid grid-cols-3 gap-2">
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-slate-900">42</div>
+              <div class="text-[10px] text-slate-500">Today</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-emerald-700">28%</div>
+              <div class="text-[10px] text-slate-500">Conversion</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-amber-700">8</div>
+              <div class="text-[10px] text-slate-500">Stale</div>
+            </div>
+          </div>
+
+          <!-- Filter chips -->
+          <div class="px-4 pt-1 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 42</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">New</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Qualified</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Engaged</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Lost</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold">SK</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="font-medium text-slate-900 truncate">Suresh Kumar</div>
+                    <span class="pill bg-emerald-50 text-emerald-700">High score · 92</span>
+                  </div>
+                  <div class="text-xs text-slate-500 truncate">Website · Hero Cycles · 12m ago</div>
+                </div>
+              </div>
+              <div class="mt-2.5 grid grid-cols-3 gap-1.5">
+                <button class="py-1.5 rounded-lg bg-brand-50 text-brand-700 text-[11px] font-medium flex items-center justify-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> Call</button>
+                <button class="py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-medium flex items-center justify-center gap-1"><i data-lucide="message-circle" class="w-3 h-3"></i> WhatsApp</button>
+                <button class="py-1.5 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-medium flex items-center justify-center gap-1"><i data-lucide="user-check" class="w-3 h-3"></i> Qualify</button>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 grid place-items-center font-semibold">DM</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="font-medium text-slate-900 truncate">Deepa Mahadevan</div>
+                    <span class="pill bg-sky-50 text-sky-700">Mid · 67</span>
+                  </div>
+                  <div class="text-xs text-slate-500 truncate">Walk-in · CK Showroom · 2h ago</div>
+                </div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center font-semibold">VR</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="font-medium text-slate-900 truncate">Vinay Reddy</div>
+                    <span class="pill bg-amber-50 text-amber-700">Stale · 5d</span>
+                  </div>
+                  <div class="text-xs text-slate-500 truncate">Referral · Metro · No response</div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Calls
+             ============================================================ -->
+        <section data-screen="calls">
+          <!-- Stat strip -->
+          <div class="px-4 pt-3 pb-2">
+            <div class="bg-gradient-to-br from-brand-600 to-brand-700 rounded-2xl p-3.5 text-white shadow-card">
+              <div class="text-[11px] text-brand-100">Your queue today</div>
+              <div class="flex items-end gap-3 mt-0.5">
+                <div class="text-2xl font-bold">14</div>
+                <div class="text-xs text-brand-100 pb-1">calls · ~2h 30m</div>
+              </div>
+              <div class="mt-2 flex items-center gap-3 text-[11px] text-brand-100">
+                <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>5 connected</span>
+                <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>3 to retry</span>
+                <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>1 missed</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tabs -->
+          <div class="px-4 pt-1 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">Scheduled · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Logged · 5</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Missed · 1</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-medium text-slate-700">11:00 AM</span>
+                  <span class="pill bg-amber-50 text-amber-700">Up next</span>
+                </div>
+                <span class="text-[10px] text-slate-500">in 12 min</span>
+              </div>
+              <div class="flex items-center gap-3 mt-1">
+                <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-xs font-semibold">AK</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900 truncate">Akash Kumar</div>
+                  <div class="text-[11px] text-slate-500 truncate">+91 98765 43210 · Hero Cycles</div>
+                </div>
+                <button class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium flex items-center gap-1"><i data-lucide="phone" class="w-3.5 h-3.5"></i> Call</button>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] font-medium text-slate-700">11:30 AM</span>
+                <span class="text-[10px] text-slate-500">in 42 min</span>
+              </div>
+              <div class="flex items-center gap-3 mt-1">
+                <div class="w-9 h-9 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-xs font-semibold">SD</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900 truncate">Sanjay Desai</div>
+                  <div class="text-[11px] text-slate-500 truncate">+91 99887 76655 · States Cycles</div>
+                </div>
+                <button class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-medium">Reschedule</button>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5 opacity-90">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] font-medium text-slate-700">10:15 AM</span>
+                <span class="pill bg-emerald-50 text-emerald-700">Connected</span>
+              </div>
+              <div class="flex items-center gap-3 mt-1">
+                <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-700 grid place-items-center text-xs font-semibold">RP</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900 truncate">Rohit Patel</div>
+                  <div class="text-[11px] text-slate-500 truncate">3m 12s · "Wants quote by EOD"</div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Walk-ins
+             ============================================================ -->
+        <section data-screen="walkins">
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <button class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-600"></i></button>
+              <div class="text-sm font-semibold text-slate-900">Tue, 20 Oct</div>
+              <button class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i></button>
+            </div>
+            <div class="text-[11px] text-slate-500">7 walk-ins</div>
+          </div>
+
+          <!-- Dealer chips -->
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Hero · 3</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">CK · 2</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Metro · 2</button>
+          </div>
+
+          <div class="px-4 pb-24 space-y-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-1 mb-2">Hero Cycles · 3</div>
+              <ul class="space-y-2">
+                <li class="bg-white rounded-xl shadow-card p-3.5">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-medium text-slate-700">11:00 – 11:15</span>
+                    <span class="pill bg-emerald-50 text-emerald-700">Logged</span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1">
+                    <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-xs font-semibold">AK</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-slate-900 truncate">Akash Kumar</div>
+                      <div class="text-[11px] text-slate-500 truncate">Naresh N. · Sprint Pro shown</div>
+                    </div>
+                  </div>
+                </li>
+                <li class="bg-white rounded-xl shadow-card p-3.5">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-medium text-slate-700">12:30 – 12:50</span>
+                    <span class="pill bg-amber-50 text-amber-700">Scheduled</span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1">
+                    <div class="w-9 h-9 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-xs font-semibold">DM</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-slate-900 truncate">Deepa Mahadevan</div>
+                      <div class="text-[11px] text-slate-500 truncate">Naresh N. · Lectro EHX interest</div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-1 mb-2">CK Showroom · 2</div>
+              <ul class="space-y-2">
+                <li class="bg-white rounded-xl shadow-card p-3.5">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-medium text-slate-700">14:30</span>
+                    <span class="pill bg-rose-50 text-rose-700">Cancelled</span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1">
+                    <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-700 grid place-items-center text-xs font-semibold">VR</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-slate-900 truncate">Vinay Reddy</div>
+                      <div class="text-[11px] text-slate-500 truncate">Auto-cancelled · No response</div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — More (secondary nav)
+             ============================================================ -->
+        <section data-screen="more">
+          <!-- Profile card -->
+          <div class="px-4 pt-3 pb-3">
+            <div class="bg-white rounded-2xl shadow-card p-3.5 flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-violet-100 text-violet-700 grid place-items-center font-semibold text-lg">HD</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-slate-900">Harish Dev</div>
+                <div class="text-[11px] text-slate-500">Sales Rep · Hero Cycles · Sector 18</div>
+              </div>
+              <button class="text-xs text-brand-600 font-medium">Edit</button>
+            </div>
+          </div>
+
+          <!-- Section: Workspace -->
+          <div class="px-4 pb-2">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5 px-2">Workspace</div>
+            <ul class="bg-white rounded-2xl shadow-card divide-y divide-slate-100">
+              <li><a href="#dashboard" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Dashboard</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+              <li><a href="#dealers" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="building-2" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Dealers</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+              <li><a href="#team" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="users" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">My sales team</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+              <li><a href="#lifecycle" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="line-chart" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Lifecycle overview</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+            </ul>
+          </div>
+
+          <!-- Section: Operations -->
+          <div class="px-4 pb-2">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5 px-2">Operations</div>
+            <ul class="bg-white rounded-2xl shadow-card divide-y divide-slate-100">
+              <li><a href="#testrides" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="bike" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Test rides</span><span class="pill bg-amber-50 text-amber-700">3 today</span>
+              </a></li>
+              <li><a href="#sales-list" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="indian-rupee" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Sales</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+              <li><a href="#dispositions" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="list-checks" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Disposition tracker</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+              <li><a href="#transfer" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="arrow-right-left" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Transfer customer</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+            </ul>
+          </div>
+
+          <!-- Section: Account -->
+          <div class="px-4 pb-24">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5 px-2">Account</div>
+            <ul class="bg-white rounded-2xl shadow-card divide-y divide-slate-100">
+              <li><a href="#notifications" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="bell" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Notifications</span><span class="pill bg-rose-50 text-rose-700">7</span>
+              </a></li>
+              <li><a href="#settings" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="settings" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Settings</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </a></li>
+              <li><button class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50">
+                <i data-lucide="help-circle" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Help & support</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </button></li>
+              <li><button onclick="confirmAction({ title: 'Sign out?', body: 'You will need to sign in again to access your work.', confirmLabel: 'Sign out', danger: true, onConfirm: () => showToast('Signed out') })" class="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50 text-rose-700">
+                <i data-lucide="log-out" class="w-4 h-4"></i><span class="flex-1 text-sm">Sign out</span>
+              </button></li>
+            </ul>
+            <div class="mt-4 text-center text-[10px] text-slate-400">Ottopilot · v 1.0.0 · By GrowthJockey</div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             FORM — Log a call
+             ============================================================ -->
+        <section data-screen="log-call" class="bg-slate-50">
+          <form class="px-4 py-4 pb-32 space-y-4" onsubmit="event.preventDefault(); history.back();">
+            <!-- Customer chip -->
+            <div class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
+                <div class="text-[11px] text-slate-500">+91 98765 43210</div>
+              </div>
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+            </div>
+
+            <!-- Journey -->
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Journey</label>
+              <div class="mt-1.5 flex gap-1.5">
+                <button type="button" class="flex-1 py-2 rounded-lg bg-brand-50 ring-1 ring-brand-500/20 text-brand-700 text-xs font-medium">J1 · Hero</button>
+                <button type="button" class="flex-1 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">J2 · Metro</button>
+                <button type="button" class="flex-1 py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">J3 · CK</button>
+              </div>
+            </div>
+
+            <!-- Outcome -->
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Outcome</label>
+              <div class="mt-1.5 grid grid-cols-2 gap-1.5">
+                <button type="button" class="py-2.5 rounded-lg bg-emerald-50 ring-1 ring-emerald-500/20 text-emerald-700 text-xs font-medium flex items-center justify-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5"></i> Connected</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs flex items-center justify-center gap-1.5"><i data-lucide="voicemail" class="w-3.5 h-3.5"></i> Voicemail</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs flex items-center justify-center gap-1.5"><i data-lucide="phone-off" class="w-3.5 h-3.5"></i> No answer</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs flex items-center justify-center gap-1.5"><i data-lucide="phone-incoming" class="w-3.5 h-3.5"></i> Busy</button>
+              </div>
+            </div>
+
+            <!-- Duration -->
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Duration</label>
+              <div class="mt-1.5 flex items-center gap-2">
+                <input type="number" value="3" class="w-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" />
+                <span class="text-xs text-slate-600">min</span>
+                <input type="number" value="12" class="w-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" />
+                <span class="text-xs text-slate-600">sec</span>
+              </div>
+            </div>
+
+            <!-- Disposition -->
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Update disposition</label>
+              <div class="mt-1.5 flex flex-wrap gap-1.5">
+                <button type="button" class="pill bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20">High intent</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Call back later</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Not interested</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Wrong number</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Lost</button>
+              </div>
+            </div>
+
+            <!-- Remarks -->
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Remarks</label>
+              <textarea rows="3" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" placeholder="What happened on this call?">Wants test ride this weekend at CK. Asked about EMI options.</textarea>
+            </div>
+
+            <!-- Auto-actions -->
+            <div class="bg-white rounded-xl shadow-card p-3.5 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-900">Schedule follow-up</div>
+                  <div class="text-[11px] text-slate-500">Auto-add to your queue in 3 days</div>
+                </div>
+                <button type="button" class="w-10 h-6 rounded-full bg-brand-600 relative" aria-pressed="true">
+                  <span class="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow"></span>
+                </button>
+              </div>
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-900">Send WhatsApp summary</div>
+                  <div class="text-[11px] text-slate-500">Customer will receive a recap</div>
+                </div>
+                <button type="button" class="w-10 h-6 rounded-full bg-slate-200 relative" aria-pressed="false">
+                  <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow"></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Bottom action bar -->
+            <div class="fixed left-0 right-0 bottom-0 bg-white border-t border-slate-200 px-4 py-3 grid grid-cols-2 gap-2 max-w-[420px] mx-auto sm:max-w-none sm:absolute">
+              <button type="button" onclick="history.back()" class="py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+              <button type="submit" class="py-3 rounded-xl bg-brand-600 text-white text-sm font-medium">Save call</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ============================================================
+             FORM — Log a walk-in
+             ============================================================ -->
+        <section data-screen="log-walkin" class="bg-slate-50">
+          <form class="px-4 py-4 pb-32 space-y-4" onsubmit="event.preventDefault(); history.back();">
+            <div class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
+                <div class="text-[11px] text-slate-500">+91 98765 43210 · CUST-00482</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Dealer</label>
+              <select class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500">
+                <option>Hero Cycles Showroom</option><option>CK Showroom</option><option>Metro Cycles</option><option>States Cycles</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Date</label>
+                <input type="date" value="2026-04-29" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Time</label>
+                <input type="time" value="11:00" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Models shown</label>
+              <div class="mt-1.5 flex flex-wrap gap-1.5">
+                <button type="button" class="pill bg-brand-50 text-brand-700 ring-1 ring-brand-500/20">Sprint Pro</button>
+                <button type="button" class="pill bg-brand-50 text-brand-700 ring-1 ring-brand-500/20">Lectro EHX 26</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Octane 10X</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">+ Add</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Outcome</label>
+              <div class="mt-1.5 grid grid-cols-3 gap-1.5">
+                <button type="button" class="py-2.5 rounded-lg bg-emerald-50 ring-1 ring-emerald-500/20 text-emerald-700 text-xs font-medium">Test ride</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">Quotation</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">Walk-out</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Remarks</label>
+              <textarea rows="3" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="What did they say? Any preferences?"></textarea>
+            </div>
+
+            <div class="fixed left-0 right-0 bottom-0 bg-white border-t border-slate-200 px-4 py-3 grid grid-cols-2 gap-2 max-w-[420px] mx-auto sm:max-w-none sm:absolute">
+              <button type="button" onclick="history.back()" class="py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+              <button type="submit" class="py-3 rounded-xl bg-brand-600 text-white text-sm font-medium">Save walk-in</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ============================================================
+             FORM — Log a test ride
+             ============================================================ -->
+        <section data-screen="log-testride" class="bg-slate-50">
+          <form class="px-4 py-4 pb-32 space-y-4" onsubmit="event.preventDefault(); history.back();">
+            <div class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
+                <div class="text-[11px] text-slate-500">CK Showroom · J3</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Bike model</label>
+              <div class="mt-1.5 grid grid-cols-1 gap-1.5">
+                <button type="button" class="flex items-center gap-3 p-2.5 rounded-lg bg-brand-50 ring-1 ring-brand-500/20 text-left">
+                  <div class="w-10 h-10 rounded bg-brand-100 grid place-items-center"><i data-lucide="bike" class="w-5 h-5 text-brand-700"></i></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-slate-900">Hero Sprint Pro</div>
+                    <div class="text-[11px] text-slate-500">26" · 21-speed · ₹ 48,500</div>
+                  </div>
+                  <i data-lucide="check-circle-2" class="w-4 h-4 text-brand-600"></i>
+                </button>
+                <button type="button" class="flex items-center gap-3 p-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-left">
+                  <div class="w-10 h-10 rounded bg-slate-100 grid place-items-center"><i data-lucide="bike" class="w-5 h-5 text-slate-500"></i></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-slate-900">Hero Lectro EHX 26</div>
+                    <div class="text-[11px] text-slate-500">Electric · ₹ 52,000</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Date & time</label>
+                <input type="datetime-local" value="2026-04-29T15:00" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Duration</label>
+                <select class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm">
+                  <option>15 min</option><option>30 min</option><option>45 min</option><option>1 hour</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Customer feedback</label>
+              <div class="mt-1.5 grid grid-cols-3 gap-1.5">
+                <button type="button" class="py-2.5 rounded-lg bg-emerald-50 ring-1 ring-emerald-500/20 text-emerald-700 text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> Liked</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs flex items-center justify-center gap-1"><i data-lucide="meh" class="w-3.5 h-3.5"></i> Neutral</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs flex items-center justify-center gap-1"><i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i> Disliked</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Notes</label>
+              <textarea rows="3" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="What did they like / dislike?"></textarea>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Photos</label>
+              <button type="button" class="mt-1.5 w-full py-6 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 text-xs flex flex-col items-center gap-1">
+                <i data-lucide="camera" class="w-5 h-5"></i>
+                <span>Tap to add photos</span>
+              </button>
+            </div>
+
+            <div class="fixed left-0 right-0 bottom-0 bg-white border-t border-slate-200 px-4 py-3 grid grid-cols-2 gap-2 max-w-[420px] mx-auto sm:max-w-none sm:absolute">
+              <button type="button" onclick="history.back()" class="py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+              <button type="submit" class="py-3 rounded-xl bg-brand-600 text-white text-sm font-medium">Save test ride</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ============================================================
+             FORM — Schedule follow-up
+             ============================================================ -->
+        <section data-screen="log-followup" class="bg-slate-50">
+          <form class="px-4 py-4 pb-32 space-y-4" onsubmit="event.preventDefault(); history.back();">
+            <div class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
+                <div class="text-[11px] text-slate-500">+91 98765 43210</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">When</label>
+              <div class="mt-1.5 grid grid-cols-2 gap-1.5 mb-2">
+                <button type="button" class="py-2 rounded-lg bg-brand-50 ring-1 ring-brand-500/20 text-brand-700 text-xs font-medium">Tomorrow 11 AM</button>
+                <button type="button" class="py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">In 3 days</button>
+                <button type="button" class="py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">Next Monday</button>
+                <button type="button" class="py-2 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">Custom…</button>
+              </div>
+              <input type="datetime-local" value="2026-04-30T11:00" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Channel</label>
+              <div class="mt-1.5 grid grid-cols-4 gap-1.5">
+                <button type="button" class="flex flex-col items-center gap-1 py-2.5 rounded-lg bg-brand-50 ring-1 ring-brand-500/20">
+                  <i data-lucide="phone" class="w-4 h-4 text-brand-600"></i>
+                  <span class="text-[10px] text-brand-700 font-medium">Call</span>
+                </button>
+                <button type="button" class="flex flex-col items-center gap-1 py-2.5 rounded-lg bg-white ring-1 ring-slate-200">
+                  <i data-lucide="message-circle" class="w-4 h-4 text-slate-500"></i>
+                  <span class="text-[10px] text-slate-700">WhatsApp</span>
+                </button>
+                <button type="button" class="flex flex-col items-center gap-1 py-2.5 rounded-lg bg-white ring-1 ring-slate-200">
+                  <i data-lucide="mail" class="w-4 h-4 text-slate-500"></i>
+                  <span class="text-[10px] text-slate-700">Email</span>
+                </button>
+                <button type="button" class="flex flex-col items-center gap-1 py-2.5 rounded-lg bg-white ring-1 ring-slate-200">
+                  <i data-lucide="store" class="w-4 h-4 text-slate-500"></i>
+                  <span class="text-[10px] text-slate-700">In-person</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Reminder</label>
+              <select class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm">
+                <option>30 minutes before</option><option>1 hour before</option><option>1 day before</option><option>None</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Assignee</label>
+              <button type="button" class="mt-1.5 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-slate-200 text-left">
+                <div class="w-7 h-7 rounded-full bg-violet-100 text-violet-700 grid place-items-center text-xs font-semibold">HD</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Harish Dev (you)</div>
+                </div>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+              </button>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Note</label>
+              <textarea rows="2" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="What's the follow-up about?">Confirm test ride slot at CK · check on EMI doc</textarea>
+            </div>
+
+            <div class="fixed left-0 right-0 bottom-0 bg-white border-t border-slate-200 px-4 py-3 grid grid-cols-2 gap-2 max-w-[420px] mx-auto sm:max-w-none sm:absolute">
+              <button type="button" onclick="history.back()" class="py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+              <button type="submit" class="py-3 rounded-xl bg-brand-600 text-white text-sm font-medium">Schedule</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ============================================================
+             FORM — Add note
+             ============================================================ -->
+        <section data-screen="log-note" class="bg-slate-50">
+          <form class="px-4 py-4 pb-32 space-y-4" onsubmit="event.preventDefault(); history.back();">
+            <div class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Type</label>
+              <div class="mt-1.5 flex flex-wrap gap-1.5">
+                <button type="button" class="pill bg-brand-50 text-brand-700 ring-1 ring-brand-500/20">General</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Call note</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Walk-in</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Follow-up</button>
+                <button type="button" class="pill bg-white text-slate-700 ring-1 ring-slate-200">Internal</button>
+              </div>
+            </div>
+
+            <div>
+              <textarea rows="8" autofocus class="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-500" placeholder="Type your note…"></textarea>
+              <div class="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="flex items-center gap-1"><i data-lucide="paperclip" class="w-3.5 h-3.5"></i> Attach</button>
+                  <button type="button" class="flex items-center gap-1"><i data-lucide="at-sign" class="w-3.5 h-3.5"></i> Mention</button>
+                </div>
+                <span>0 / 1000</span>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-card p-3.5 flex items-center justify-between">
+              <div>
+                <div class="text-sm text-slate-900">Pin to top</div>
+                <div class="text-[11px] text-slate-500">Stays visible on profile</div>
+              </div>
+              <button type="button" class="w-10 h-6 rounded-full bg-slate-200 relative" aria-pressed="false">
+                <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow"></span>
+              </button>
+            </div>
+
+            <div class="fixed left-0 right-0 bottom-0 bg-white border-t border-slate-200 px-4 py-3 grid grid-cols-2 gap-2 max-w-[420px] mx-auto sm:max-w-none sm:absolute">
+              <button type="button" onclick="history.back()" class="py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+              <button type="submit" class="py-3 rounded-xl bg-brand-600 text-white text-sm font-medium">Save note</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Dashboard
+             ============================================================ -->
+        <section data-screen="dashboard">
+          <div class="px-4 pt-3 pb-3">
+            <div class="text-xs text-slate-500">Tuesday, 29 Apr</div>
+            <h2 class="text-xl font-bold text-slate-900">Good morning, Harish 👋</h2>
+            <div class="text-[11px] text-slate-500">14 calls · 7 walk-ins · 3 test rides today</div>
+          </div>
+
+          <!-- Hero KPIs -->
+          <div class="px-4 pb-3 grid grid-cols-2 gap-2">
+            <div class="bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-2xl p-3.5 shadow-card">
+              <div class="text-[11px] text-brand-100">Today's revenue</div>
+              <div class="text-2xl font-bold mt-0.5">₹ 84.5k</div>
+              <div class="text-[10px] text-brand-100 mt-1">+18% vs yesterday</div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-card p-3.5">
+              <div class="text-[11px] text-slate-500">Conversion</div>
+              <div class="text-2xl font-bold text-emerald-700 mt-0.5">28%</div>
+              <div class="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5"><i data-lucide="trending-up" class="w-3 h-3"></i> +4 pts</div>
+            </div>
+          </div>
+
+          <!-- 4-up stats -->
+          <div class="px-4 grid grid-cols-4 gap-1.5">
+            <div class="bg-white rounded-xl shadow-card p-2 text-center">
+              <div class="text-base font-bold text-slate-900">42</div>
+              <div class="text-[9px] text-slate-500">Leads</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2 text-center">
+              <div class="text-base font-bold text-slate-900">14</div>
+              <div class="text-[9px] text-slate-500">Calls</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2 text-center">
+              <div class="text-base font-bold text-slate-900">7</div>
+              <div class="text-[9px] text-slate-500">Walk-ins</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2 text-center">
+              <div class="text-base font-bold text-slate-900">2</div>
+              <div class="text-[9px] text-slate-500">Sales</div>
+            </div>
+          </div>
+
+          <!-- Mini funnel -->
+          <div class="px-4 pt-4">
+            <div class="bg-white rounded-2xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-slate-900">Today's funnel</h3>
+                <a href="#lifecycle" class="text-xs text-brand-600 font-medium">Details ›</a>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <div class="flex items-center justify-between text-[11px] mb-0.5"><span class="text-slate-700">Leads</span><span class="text-slate-900 font-semibold">42</span></div>
+                  <div class="h-2 rounded-full bg-amber-500" style="width:100%"></div>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] mb-0.5"><span class="text-slate-700">Qualified</span><span class="text-slate-900 font-semibold">28 <span class="text-slate-400">· 67%</span></span></div>
+                  <div class="h-2 rounded-full bg-sky-500" style="width:67%"></div>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] mb-0.5"><span class="text-slate-700">Engaged</span><span class="text-slate-900 font-semibold">17 <span class="text-slate-400">· 41%</span></span></div>
+                  <div class="h-2 rounded-full bg-violet-500" style="width:41%"></div>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] mb-0.5"><span class="text-slate-700">Test ride</span><span class="text-slate-900 font-semibold">8 <span class="text-slate-400">· 19%</span></span></div>
+                  <div class="h-2 rounded-full bg-pink-500" style="width:19%"></div>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] mb-0.5"><span class="text-slate-700">Customer</span><span class="text-slate-900 font-semibold">2 <span class="text-slate-400">· 5%</span></span></div>
+                  <div class="h-2 rounded-full bg-emerald-500" style="width:5%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Needs attention -->
+          <div class="px-4 pt-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold text-slate-900">Needs your attention</h3>
+              <span class="pill bg-rose-50 text-rose-700">3</span>
+            </div>
+            <ul class="space-y-2">
+              <li class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 grid place-items-center"><i data-lucide="alert-triangle" class="w-4 h-4"></i></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">8 stale leads</div>
+                  <div class="text-[11px] text-slate-500">No contact in 5+ days</div>
+                </div>
+                <a href="#leads" class="text-xs text-brand-600 font-medium">Open ›</a>
+              </li>
+              <li class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 grid place-items-center"><i data-lucide="phone-off" class="w-4 h-4"></i></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">3 missed callbacks</div>
+                  <div class="text-[11px] text-slate-500">Scheduled but not connected</div>
+                </div>
+                <a href="#calls" class="text-xs text-brand-600 font-medium">Open ›</a>
+              </li>
+              <li class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 grid place-items-center"><i data-lucide="bike" class="w-4 h-4"></i></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">2 test rides today</div>
+                  <div class="text-[11px] text-slate-500">Next: 11:30 · CK Showroom</div>
+                </div>
+                <a href="#testrides" class="text-xs text-brand-600 font-medium">Open ›</a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Top customers -->
+          <div class="px-4 pt-4 pb-24">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold text-slate-900">High-intent customers</h3>
+              <a href="#customers" class="text-xs text-brand-600 font-medium">All ›</a>
+            </div>
+            <ul class="space-y-2">
+              <li class="bg-white rounded-xl shadow-card p-3">
+                <a href="#profile/akash-kumar" class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-slate-900 truncate">Akash Kumar</div>
+                    <div class="text-[11px] text-slate-500 truncate">Wants test ride this weekend</div>
+                  </div>
+                  <span class="pill bg-violet-50 text-violet-700">High</span>
+                </a>
+              </li>
+              <li class="bg-white rounded-xl shadow-card p-3">
+                <a href="#profile/akash-kumar" class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">SK</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-slate-900 truncate">Suresh Kumar</div>
+                    <div class="text-[11px] text-slate-500 truncate">Comparing Sprint Pro vs Lectro</div>
+                  </div>
+                  <span class="pill bg-violet-50 text-violet-700">High</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Dealers
+             ============================================================ -->
+        <section data-screen="dealers">
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <div>
+              <div class="text-[11px] text-slate-500">My region</div>
+              <div class="text-sm font-semibold text-slate-900">North · 6 dealers</div>
+            </div>
+            <button class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="map" class="w-4 h-4 text-slate-600"></i></button>
+          </div>
+
+          <div class="px-4 pb-2 grid grid-cols-3 gap-2">
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-slate-900">1,488</div>
+              <div class="text-[10px] text-slate-500">Customers</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-emerald-700">₹ 24.2L</div>
+              <div class="text-[10px] text-slate-500">Revenue</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-card p-2.5 text-center">
+              <div class="text-base font-bold text-amber-700">82</div>
+              <div class="text-[10px] text-slate-500">Open leads</div>
+            </div>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="store" class="w-5 h-5 text-violet-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-900 truncate">Hero Cycles Showroom</div>
+                    <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Sector 18, Noida · 4 sales reps</div>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-3 text-center text-[11px]">
+                <div><div class="font-semibold text-slate-900">412</div><div class="text-slate-500">Customers</div></div>
+                <div><div class="font-semibold text-emerald-700">₹ 8.4L</div><div class="text-slate-500">Revenue</div></div>
+                <div><div class="font-semibold text-amber-700">28</div><div class="text-slate-500">Leads</div></div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="store" class="w-5 h-5 text-violet-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-900 truncate">CK Showroom</div>
+                    <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Sector 62, Noida · 3 sales reps</div>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-3 text-center text-[11px]">
+                <div><div class="font-semibold text-slate-900">328</div><div class="text-slate-500">Customers</div></div>
+                <div><div class="font-semibold text-emerald-700">₹ 6.1L</div><div class="text-slate-500">Revenue</div></div>
+                <div><div class="font-semibold text-amber-700">19</div><div class="text-slate-500">Leads</div></div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="store" class="w-5 h-5 text-violet-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-900 truncate">Metro Cycles</div>
+                    <span class="pill bg-amber-50 text-amber-700">At risk</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Sector 32, Gurugram · 2 sales reps</div>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-3 text-center text-[11px]">
+                <div><div class="font-semibold text-slate-900">214</div><div class="text-slate-500">Customers</div></div>
+                <div><div class="font-semibold text-amber-700">₹ 3.1L</div><div class="text-slate-500">Revenue</div></div>
+                <div><div class="font-semibold text-rose-700">14</div><div class="text-slate-500">Stale</div></div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="store" class="w-5 h-5 text-violet-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-900 truncate">States Cycles</div>
+                    <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Connaught Place · 5 sales reps</div>
+                </div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="store" class="w-5 h-5 text-violet-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-900 truncate">KKM Showroom</div>
+                    <span class="pill bg-emerald-50 text-emerald-700">Active</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Lajpat Nagar · 2 sales reps</div>
+                </div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="store" class="w-5 h-5 text-violet-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-900 truncate">Akshay Showroom</div>
+                    <span class="pill bg-slate-100 text-slate-700">Inactive</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Greater Kailash · 1 sales rep</div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — My Sales Team
+             ============================================================ -->
+        <section data-screen="team">
+          <!-- Top performer card -->
+          <div class="px-4 pt-3 pb-3">
+            <div class="bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl p-4 text-white shadow-card">
+              <div class="flex items-center gap-2 text-[11px] uppercase tracking-wide text-amber-50 mb-1">
+                <i data-lucide="trophy" class="w-3.5 h-3.5"></i> Top performer · April
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-white/20 ring-2 ring-white/40 grid place-items-center font-semibold text-lg">NN</div>
+                <div class="flex-1">
+                  <div class="text-base font-bold">Naresh Nethaji</div>
+                  <div class="text-xs text-amber-50">8 sales · ₹ 4.1L · 32% conv.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter chips -->
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 12</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Sales reps</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Managers</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold">NN</div>
+                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 ring-2 ring-white rounded-full"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Naresh Nethaji</div>
+                  <div class="text-[11px] text-slate-500">Sr. Sales · Hero Cycles</div>
+                </div>
+                <span class="pill bg-emerald-50 text-emerald-700">32% conv</span>
+              </div>
+              <div class="mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-4 text-center text-[11px]">
+                <div><div class="font-semibold text-slate-900">28</div><div class="text-slate-500">Leads</div></div>
+                <div><div class="font-semibold text-slate-900">12</div><div class="text-slate-500">Calls</div></div>
+                <div><div class="font-semibold text-slate-900">8</div><div class="text-slate-500">Sales</div></div>
+                <div><div class="font-semibold text-emerald-700">₹4.1L</div><div class="text-slate-500">Rev</div></div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full bg-violet-100 text-violet-700 grid place-items-center font-semibold">HD</div>
+                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 ring-2 ring-white rounded-full"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Harish Dev <span class="text-[10px] text-slate-500">(you)</span></div>
+                  <div class="text-[11px] text-slate-500">Sales Rep · Hero Cycles</div>
+                </div>
+                <span class="pill bg-emerald-50 text-emerald-700">28% conv</span>
+              </div>
+              <div class="mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-4 text-center text-[11px]">
+                <div><div class="font-semibold text-slate-900">22</div><div class="text-slate-500">Leads</div></div>
+                <div><div class="font-semibold text-slate-900">14</div><div class="text-slate-500">Calls</div></div>
+                <div><div class="font-semibold text-slate-900">6</div><div class="text-slate-500">Sales</div></div>
+                <div><div class="font-semibold text-emerald-700">₹3.1L</div><div class="text-slate-500">Rev</div></div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 grid place-items-center font-semibold">SG</div>
+                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-amber-500 ring-2 ring-white rounded-full"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Sanjay Gupta</div>
+                  <div class="text-[11px] text-slate-500">Sales Rep · CK Showroom</div>
+                </div>
+                <span class="pill bg-amber-50 text-amber-700">18% conv</span>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full bg-pink-100 text-pink-700 grid place-items-center font-semibold">AR</div>
+                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-slate-400 ring-2 ring-white rounded-full"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Arun Rao</div>
+                  <div class="text-[11px] text-slate-500">Sales Rep · Metro Cycles · Offline</div>
+                </div>
+                <span class="pill bg-rose-50 text-rose-700">9% conv</span>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Lifecycle Overview
+             ============================================================ -->
+        <section data-screen="lifecycle">
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <div>
+              <div class="text-[11px] text-slate-500">Last 30 days</div>
+              <div class="text-sm font-semibold text-slate-900">Customer lifecycle</div>
+            </div>
+            <button class="text-xs text-brand-600 font-medium">Change range ›</button>
+          </div>
+
+          <!-- Funnel -->
+          <div class="px-4 pb-3">
+            <div class="bg-white rounded-2xl shadow-card p-3.5">
+              <div class="space-y-3">
+                <!-- Lead -->
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span class="text-sm font-medium text-slate-900">Lead</span></div>
+                    <span class="text-sm font-semibold text-slate-900">1,248</span>
+                  </div>
+                  <div class="relative h-7 rounded-lg bg-amber-100 overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 bg-amber-500" style="width:100%"></div>
+                    <span class="absolute inset-0 flex items-center justify-end pr-3 text-[10px] font-medium text-white">100%</span>
+                  </div>
+                </div>
+                <!-- Qualified -->
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-sky-500"></span><span class="text-sm font-medium text-slate-900">Qualified</span></div>
+                    <span class="text-sm font-semibold text-slate-900">812 <span class="text-[10px] text-slate-500">· -34.9%</span></span>
+                  </div>
+                  <div class="relative h-7 rounded-lg bg-sky-100 overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 bg-sky-500" style="width:65%"></div>
+                    <span class="absolute inset-0 flex items-center justify-end pr-3 text-[10px] font-medium text-white">65%</span>
+                  </div>
+                </div>
+                <!-- Engaged -->
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-violet-500"></span><span class="text-sm font-medium text-slate-900">Engaged</span></div>
+                    <span class="text-sm font-semibold text-slate-900">448 <span class="text-[10px] text-slate-500">· -44.8%</span></span>
+                  </div>
+                  <div class="relative h-7 rounded-lg bg-violet-100 overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 bg-violet-500" style="width:36%"></div>
+                    <span class="absolute inset-0 flex items-center justify-end pr-3 text-[10px] font-medium text-white">36%</span>
+                  </div>
+                </div>
+                <!-- Test ride -->
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-pink-500"></span><span class="text-sm font-medium text-slate-900">Test ride</span></div>
+                    <span class="text-sm font-semibold text-slate-900">218 <span class="text-[10px] text-slate-500">· -51.3%</span></span>
+                  </div>
+                  <div class="relative h-7 rounded-lg bg-pink-100 overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 bg-pink-500" style="width:17%"></div>
+                    <span class="absolute inset-0 flex items-center justify-end pr-3 text-[10px] font-medium text-white">17%</span>
+                  </div>
+                </div>
+                <!-- Customer -->
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-sm font-medium text-slate-900">Customer</span></div>
+                    <span class="text-sm font-semibold text-emerald-700">62 <span class="text-[10px] text-slate-500">· -71.6%</span></span>
+                  </div>
+                  <div class="relative h-7 rounded-lg bg-emerald-100 overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 bg-emerald-500" style="width:5%"></div>
+                    <span class="absolute inset-0 flex items-center justify-end pr-3 text-[10px] font-medium text-white">5%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div class="text-[11px] text-slate-500">End-to-end conversion</div>
+                <div class="text-base font-bold text-emerald-700">5.0%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Drop-off insights -->
+          <div class="px-4 pt-1 pb-24">
+            <h3 class="text-sm font-semibold text-slate-900 mb-2">Where customers drop off</h3>
+            <ul class="space-y-2">
+              <li class="bg-white rounded-xl shadow-card p-3 flex items-start gap-3">
+                <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 grid place-items-center"><i data-lucide="trending-down" class="w-4 h-4"></i></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Test ride → Customer</div>
+                  <div class="text-[11px] text-slate-500">71.6% drop · highest in funnel · review pricing & EMI</div>
+                </div>
+              </li>
+              <li class="bg-white rounded-xl shadow-card p-3 flex items-start gap-3">
+                <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 grid place-items-center"><i data-lucide="trending-down" class="w-4 h-4"></i></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Engaged → Test ride</div>
+                  <div class="text-[11px] text-slate-500">51.3% drop · scheduling friction</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Test Rides
+             ============================================================ -->
+        <section data-screen="testrides">
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <div>
+              <div class="text-[11px] text-slate-500">Today, 29 Apr</div>
+              <div class="text-sm font-semibold text-slate-900">3 test rides</div>
+            </div>
+            <button class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Schedule</button>
+          </div>
+
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">Scheduled · 2</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">In progress · 0</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Completed · 1</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Cancelled · 0</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-medium text-slate-700">11:30 AM · 30 min</span>
+                <span class="pill bg-amber-50 text-amber-700">Up next</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-brand-100 grid place-items-center"><i data-lucide="bike" class="w-5 h-5 text-brand-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Hero Sprint Pro</div>
+                  <div class="text-[11px] text-slate-500">Akash Kumar · CK Showroom</div>
+                </div>
+              </div>
+              <div class="mt-2.5 grid grid-cols-2 gap-1.5">
+                <button class="py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-medium">Start ride</button>
+                <button class="py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-[11px] font-medium">Reschedule</button>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-medium text-slate-700">2:30 PM · 45 min</span>
+                <span class="pill bg-sky-50 text-sky-700">Scheduled</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-brand-100 grid place-items-center"><i data-lucide="bike" class="w-5 h-5 text-brand-700"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Hero Lectro EHX 26</div>
+                  <div class="text-[11px] text-slate-500">Suresh Kumar · Hero Cycles</div>
+                </div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3.5 opacity-90">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-medium text-slate-700">9:00 AM · 30 min</span>
+                <span class="pill bg-emerald-50 text-emerald-700">Completed · Liked</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-100 grid place-items-center"><i data-lucide="bike" class="w-5 h-5 text-slate-500"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-900">Hero Octane 10X</div>
+                  <div class="text-[11px] text-slate-500">Rohit Patel · Metro Cycles</div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Sales (global, all orders)
+             ============================================================ -->
+        <section data-screen="sales-list">
+          <div class="px-4 pt-3 pb-2">
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white rounded-2xl p-4 shadow-card">
+              <div class="text-[11px] text-emerald-100">Month-to-date revenue</div>
+              <div class="text-2xl font-bold mt-0.5">₹ 24,18,500</div>
+              <div class="flex items-center gap-3 mt-2 text-[11px] text-emerald-100">
+                <span class="flex items-center gap-1"><i data-lucide="trending-up" class="w-3 h-3"></i> +18%</span>
+                <span>· 62 orders · ₹ 39k avg</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 62</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Delivered · 48</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Confirmed · 8</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Quoted · 6</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-900 truncate">Hero Sprint Pro</div>
+                  <div class="text-[11px] text-slate-500 truncate mt-0.5">#ORD-2425 · Akash Kumar · CK Showroom</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">Today, 09:42 · Naresh N.</div>
+                </div>
+                <div class="text-right flex-none">
+                  <div class="text-sm font-semibold text-slate-900">₹ 48,500</div>
+                  <span class="pill bg-emerald-50 text-emerald-700 mt-1">Delivered</span>
+                </div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-900 truncate">Hero Lectro EHX 26</div>
+                  <div class="text-[11px] text-slate-500 truncate mt-0.5">#ORD-2424 · Deepa Mahadevan · CK</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">Today, 08:10 · Sanjay G.</div>
+                </div>
+                <div class="text-right flex-none">
+                  <div class="text-sm font-semibold text-slate-900">₹ 52,000</div>
+                  <span class="pill bg-sky-50 text-sky-700 mt-1">Confirmed</span>
+                </div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-900 truncate">Hero Octane 10X</div>
+                  <div class="text-[11px] text-slate-500 truncate mt-0.5">#QTE-1844 · Vinay Reddy · Hero</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">Yesterday · expires in 4d</div>
+                </div>
+                <div class="text-right flex-none">
+                  <div class="text-sm font-semibold text-slate-900">₹ 24,000</div>
+                  <span class="pill bg-amber-50 text-amber-700 mt-1">Quoted</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Disposition Tracker
+             ============================================================ -->
+        <section data-screen="dispositions">
+          <div class="px-4 pt-3 pb-2 grid grid-cols-4 gap-1.5">
+            <div class="bg-emerald-50 rounded-lg p-2 text-center"><div class="text-base font-bold text-emerald-700">38</div><div class="text-[9px] text-emerald-700/80">High intent</div></div>
+            <div class="bg-amber-50 rounded-lg p-2 text-center"><div class="text-base font-bold text-amber-700">22</div><div class="text-[9px] text-amber-700/80">Call back</div></div>
+            <div class="bg-sky-50 rounded-lg p-2 text-center"><div class="text-base font-bold text-sky-700">18</div><div class="text-[9px] text-sky-700/80">Connected</div></div>
+            <div class="bg-rose-50 rounded-lg p-2 text-center"><div class="text-base font-bold text-rose-700">12</div><div class="text-[9px] text-rose-700/80">Lost</div></div>
+          </div>
+
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Today</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Auto changes</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Manual</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-white rounded-xl shadow-card p-3">
+              <div class="flex items-center justify-between mb-1">
+                <div class="text-[11px] font-medium text-slate-700">2h ago · Akash Kumar</div>
+                <span class="text-[10px] text-slate-500">Harish Dev</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="pill bg-amber-50 text-amber-700 line-through">Call back</span>
+                <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+                <span class="pill bg-emerald-50 text-emerald-700">High intent</span>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3">
+              <div class="flex items-center justify-between mb-1">
+                <div class="text-[11px] font-medium text-slate-700">4h ago · Vinay Reddy</div>
+                <span class="text-[10px] text-slate-500">System</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="pill bg-amber-50 text-amber-700 line-through">Call back</span>
+                <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+                <span class="pill bg-rose-50 text-rose-700">Lost</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-1">Auto: 3 missed callbacks</div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3">
+              <div class="flex items-center justify-between mb-1">
+                <div class="text-[11px] font-medium text-slate-700">Yesterday · Suresh Kumar</div>
+                <span class="text-[10px] text-slate-500">Sanjay G.</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="pill bg-sky-50 text-sky-700 line-through">Connected</span>
+                <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+                <span class="pill bg-emerald-50 text-emerald-700">High intent</span>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Transfer customer (form)
+             ============================================================ -->
+        <section data-screen="transfer" class="bg-slate-50">
+          <form class="px-4 py-4 pb-32 space-y-4" onsubmit="event.preventDefault();">
+            <div class="bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-semibold text-xs">AK</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Akash Kumar</div>
+                <div class="text-[11px] text-slate-500">CUST-00482 · Currently with Naresh N.</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Transfer type</label>
+              <div class="mt-1.5 grid grid-cols-2 gap-1.5">
+                <button type="button" class="py-2.5 rounded-lg bg-brand-50 ring-1 ring-brand-500/20 text-brand-700 text-xs font-medium">Reassign owner</button>
+                <button type="button" class="py-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-slate-700 text-xs">Move to another dealer</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">New owner</label>
+              <ul class="mt-1.5 space-y-1.5">
+                <li><button type="button" class="w-full flex items-center gap-3 p-2.5 rounded-lg bg-brand-50 ring-1 ring-brand-500/20 text-left">
+                  <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-700 grid place-items-center text-xs font-semibold">HD</div>
+                  <div class="flex-1 min-w-0"><div class="text-sm font-medium text-slate-900">Harish Dev (you)</div><div class="text-[11px] text-slate-500">Sales Rep · Hero Cycles · 14 active</div></div>
+                  <i data-lucide="check-circle-2" class="w-4 h-4 text-brand-600"></i>
+                </button></li>
+                <li><button type="button" class="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-left">
+                  <div class="w-8 h-8 rounded-full bg-sky-100 text-sky-700 grid place-items-center text-xs font-semibold">SG</div>
+                  <div class="flex-1 min-w-0"><div class="text-sm font-medium text-slate-900">Sanjay Gupta</div><div class="text-[11px] text-slate-500">CK Showroom · 22 active</div></div>
+                </button></li>
+                <li><button type="button" class="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white ring-1 ring-slate-200 text-left">
+                  <div class="w-8 h-8 rounded-full bg-pink-100 text-pink-700 grid place-items-center text-xs font-semibold">AR</div>
+                  <div class="flex-1 min-w-0"><div class="text-sm font-medium text-slate-900">Arun Rao</div><div class="text-[11px] text-slate-500">Metro Cycles · 8 active</div></div>
+                </button></li>
+              </ul>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Reason</label>
+              <select class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm">
+                <option>Closer to customer's location</option>
+                <option>Better fit for product line</option>
+                <option>Owner unavailable / on leave</option>
+                <option>Customer request</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Note for new owner</label>
+              <textarea rows="3" class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="Context, preferences, in-flight conversations…"></textarea>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+              <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-none mt-0.5"></i>
+              <div class="text-[11px] text-amber-800">All open journeys, scheduled events, and notes will move with the customer. Activity history stays attributed to the original owner.</div>
+            </div>
+
+            <div class="fixed left-0 right-0 bottom-0 bg-white border-t border-slate-200 px-4 py-3 grid grid-cols-2 gap-2 max-w-[420px] mx-auto sm:max-w-none sm:absolute">
+              <button type="button" onclick="history.back()" class="py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+              <button type="button" onclick="confirmAction({ title: 'Transfer customer?', body: 'Akash Kumar will be transferred to the selected owner. This is reversible.', confirmLabel: 'Transfer', onConfirm: () => { showToast('Customer transferred'); setTimeout(() => history.back(), 300); } })" class="py-3 rounded-xl bg-brand-600 text-white text-sm font-medium">Transfer</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Notifications
+             ============================================================ -->
+        <section data-screen="notifications">
+          <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+            <div class="text-sm font-semibold text-slate-900">7 unread</div>
+            <button class="text-xs text-brand-600 font-medium">Mark all read</button>
+          </div>
+
+          <div class="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20 whitespace-nowrap">All · 12</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Mentions · 2</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">Activity</button>
+            <button class="pill bg-white text-slate-700 ring-1 ring-slate-200 whitespace-nowrap">System</button>
+          </div>
+
+          <ul class="px-4 pb-24 space-y-2">
+            <li class="bg-brand-50 rounded-xl shadow-card p-3 flex items-start gap-3 ring-1 ring-brand-500/10">
+              <span class="w-9 h-9 rounded-lg bg-brand-100 text-brand-700 grid place-items-center flex-none"><i data-lucide="user-plus" class="w-4 h-4"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-slate-900"><span class="font-medium">New high-intent lead:</span> Suresh Kumar from website form</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">12 minutes ago</div>
+              </div>
+              <span class="w-2 h-2 rounded-full bg-brand-600 mt-1"></span>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3 flex items-start gap-3">
+              <span class="w-9 h-9 rounded-lg bg-violet-100 text-violet-700 grid place-items-center flex-none"><i data-lucide="at-sign" class="w-4 h-4"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-slate-900"><span class="font-medium">Naresh Nethaji</span> mentioned you on Akash Kumar</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">"Can you handle the EMI doc?" · 1h</div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3 flex items-start gap-3">
+              <span class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 grid place-items-center flex-none"><i data-lucide="alarm-clock" class="w-4 h-4"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-slate-900">Follow-up reminder: <span class="font-medium">Rohit Patel</span></div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Due in 30 min</div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3 flex items-start gap-3">
+              <span class="w-9 h-9 rounded-lg bg-rose-100 text-rose-700 grid place-items-center flex-none"><i data-lucide="alert-triangle" class="w-4 h-4"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-slate-900"><span class="font-medium">Auto-churned:</span> Vinay Reddy after 5 days</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">3h ago · Re-open if needed</div>
+              </div>
+            </li>
+            <li class="bg-white rounded-xl shadow-card p-3 flex items-start gap-3">
+              <span class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 grid place-items-center flex-none"><i data-lucide="indian-rupee" class="w-4 h-4"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-slate-900">Sale closed: <span class="font-medium">Hero Sprint Pro</span></div>
+                <div class="text-[11px] text-slate-500 mt-0.5">₹ 48,500 · Akash Kumar · 4h</div>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ============================================================
+             SCREEN — Settings
+             ============================================================ -->
+        <section data-screen="settings">
+          <div class="px-4 pt-3 pb-3">
+            <div class="bg-white rounded-2xl shadow-card p-3.5 flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-violet-100 text-violet-700 grid place-items-center font-semibold text-lg">HD</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-slate-900">Harish Dev</div>
+                <div class="text-[11px] text-slate-500">harish@hero-cycles.in · +91 99887 76601</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-4 pb-2">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5 px-2">Preferences</div>
+            <ul class="bg-white rounded-2xl shadow-card divide-y divide-slate-100">
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="bell" class="w-4 h-4 text-slate-500"></i>
+                <span class="flex-1 text-sm text-slate-800">Push notifications</span>
+                <button class="w-10 h-6 rounded-full bg-brand-600 relative" aria-pressed="true"><span class="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow"></span></button>
+              </li>
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="moon" class="w-4 h-4 text-slate-500"></i>
+                <span class="flex-1 text-sm text-slate-800">Quiet hours · 21:00–07:00</span>
+                <button class="w-10 h-6 rounded-full bg-brand-600 relative" aria-pressed="true"><span class="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow"></span></button>
+              </li>
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="languages" class="w-4 h-4 text-slate-500"></i>
+                <span class="flex-1 text-sm text-slate-800">Language</span>
+                <span class="text-xs text-slate-500">English</span>
+              </li>
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="palette" class="w-4 h-4 text-slate-500"></i>
+                <span class="flex-1 text-sm text-slate-800">Theme</span>
+                <span class="text-xs text-slate-500">Light</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="px-4 pb-2">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5 px-2">Integrations</div>
+            <ul class="bg-white rounded-2xl shadow-card divide-y divide-slate-100">
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
+                <span class="flex-1 text-sm text-slate-800">WhatsApp Business</span>
+                <span class="pill bg-emerald-50 text-emerald-700">Connected</span>
+              </li>
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="phone" class="w-4 h-4 text-sky-600"></i>
+                <span class="flex-1 text-sm text-slate-800">Telephony (Exotel)</span>
+                <span class="pill bg-emerald-50 text-emerald-700">Connected</span>
+              </li>
+              <li class="px-3.5 py-3 flex items-center gap-3">
+                <i data-lucide="mail" class="w-4 h-4 text-rose-600"></i>
+                <span class="flex-1 text-sm text-slate-800">Email</span>
+                <span class="text-xs text-slate-500">Not connected</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="px-4 pb-24">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5 px-2">Account</div>
+            <ul class="bg-white rounded-2xl shadow-card divide-y divide-slate-100">
+              <li><button class="w-full px-3.5 py-3 flex items-center gap-3 text-left active:bg-slate-50">
+                <i data-lucide="shield" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Privacy & security</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </button></li>
+              <li><button class="w-full px-3.5 py-3 flex items-center gap-3 text-left active:bg-slate-50">
+                <i data-lucide="help-circle" class="w-4 h-4 text-slate-500"></i><span class="flex-1 text-sm text-slate-800">Help & support</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+              </button></li>
+              <li><button onclick="confirmAction({ title: 'Sign out?', body: 'You will need to sign in again to access your work.', confirmLabel: 'Sign out', danger: true, onConfirm: () => showToast('Signed out') })" class="w-full px-3.5 py-3 flex items-center gap-3 text-left text-rose-700 active:bg-slate-50">
+                <i data-lucide="log-out" class="w-4 h-4"></i><span class="flex-1 text-sm">Sign out</span>
+              </button></li>
+            </ul>
+            <div class="mt-4 text-center text-[10px] text-slate-400">Ottopilot · v 1.0.0 · By GrowthJockey</div>
+          </div>
+        </section>
+
+        <!-- spacer for bottom nav -->
+        <div class="h-20"></div>
+      </main>
+
+      <!-- Bottom navigation -->
+      <nav class="flex-none bg-white border-t border-slate-200 z-30">
+        <div class="grid grid-cols-5 text-[10px] text-slate-600">
+          <button data-nav="customers" class="nav-btn flex flex-col items-center gap-0.5 py-2 text-brand-600">
+            <i data-lucide="users" class="w-5 h-5"></i><span class="font-medium">Customers</span>
+          </button>
+          <button data-nav="leads" class="nav-btn flex flex-col items-center gap-0.5 py-2">
+            <i data-lucide="user-plus" class="w-5 h-5"></i><span>Leads</span>
+          </button>
+          <button data-nav="calls" class="nav-btn flex flex-col items-center gap-0.5 py-2">
+            <i data-lucide="phone" class="w-5 h-5"></i><span>Calls</span>
+          </button>
+          <button data-nav="walkins" class="nav-btn flex flex-col items-center gap-0.5 py-2">
+            <i data-lucide="store" class="w-5 h-5"></i><span>Walk-ins</span>
+          </button>
+          <button data-nav="more" class="nav-btn flex flex-col items-center gap-0.5 py-2">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i><span>More</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Toast / snackbar -->
+      <div id="toast" class="toast absolute left-1/2 bottom-24 z-[60] bg-slate-900 text-white text-xs px-3.5 py-2.5 rounded-full shadow-lg flex items-center gap-2 max-w-[90%] whitespace-nowrap">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-none"></i>
+        <span id="toast-msg">Saved</span>
+      </div>
+
+      <!-- Confirmation dialog -->
+      <div id="dialog-backdrop" class="dialog-backdrop absolute inset-0 z-[55] bg-black/50 grid place-items-center p-6">
+        <div class="dialog bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+          <div class="p-5">
+            <div class="w-10 h-10 rounded-full bg-rose-100 grid place-items-center mb-3">
+              <i data-lucide="alert-triangle" class="w-5 h-5 text-rose-600"></i>
+            </div>
+            <h3 id="dialog-title" class="text-base font-semibold text-slate-900">Mark as do-not-contact?</h3>
+            <p id="dialog-body" class="text-sm text-slate-600 mt-1">This customer will be removed from all outreach queues. You can reverse this from the customer profile.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2 px-3 pb-3">
+            <button id="dialog-cancel" class="py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700">Cancel</button>
+            <button id="dialog-confirm" class="py-2.5 rounded-xl bg-rose-600 text-white text-sm font-medium">Mark DNC</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating action button (Profile only) -->
+      <button id="fab" class="hidden absolute right-4 bottom-20 z-30 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 active:scale-95 transition grid place-items-center" aria-label="Log activity">
+        <i data-lucide="plus" class="w-6 h-6"></i>
+      </button>
+
+      <!-- Bottom-sheet: Log activity (Profile only) -->
+      <div id="log-sheet" class="sheet absolute left-0 right-0 bottom-0 bg-white z-50 rounded-t-2xl shadow-sheet">
+        <div class="flex justify-center pt-2">
+          <div class="w-10 h-1 bg-slate-300 rounded-full"></div>
+        </div>
+        <div class="px-4 py-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">Log activity</h3>
+          <button data-close-sheet class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5 text-slate-700"></i></button>
+        </div>
+        <ul class="px-2 pb-5 divide-y divide-slate-100">
+          <li>
+            <a href="#log-call" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+              <span class="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center"><i data-lucide="phone" class="w-4 h-4 text-violet-700"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Log a call</div>
+                <div class="text-[11px] text-slate-500">Outcome, duration, remarks</div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#log-walkin" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+              <span class="w-9 h-9 rounded-lg bg-pink-100 grid place-items-center"><i data-lucide="store" class="w-4 h-4 text-pink-700"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Log a walk-in</div>
+                <div class="text-[11px] text-slate-500">Pick dealer · attach notes</div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#log-testride" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+              <span class="w-9 h-9 rounded-lg bg-amber-100 grid place-items-center"><i data-lucide="bike" class="w-4 h-4 text-amber-700"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Log a test ride</div>
+                <div class="text-[11px] text-slate-500">Model, dealer, feedback</div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#log-followup" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+              <span class="w-9 h-9 rounded-lg bg-sky-100 grid place-items-center"><i data-lucide="calendar-plus" class="w-4 h-4 text-sky-700"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Schedule follow-up</div>
+                <div class="text-[11px] text-slate-500">Reminder for you / team</div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#log-note" data-close-sheet class="w-full flex items-center gap-3 px-2 py-3 text-left active:bg-slate-50 rounded-lg">
+              <span class="w-9 h-9 rounded-lg bg-emerald-100 grid place-items-center"><i data-lucide="sticky-note" class="w-4 h-4 text-emerald-700"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-900">Add note</div>
+                <div class="text-[11px] text-slate-500">Internal · pinnable</div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Bottom-sheet: Filters -->
+      <div id="scrim" class="scrim absolute inset-0 bg-black/40 z-40"></div>
+      <div id="filter-sheet" class="sheet absolute left-0 right-0 bottom-0 bg-white z-50 rounded-t-2xl shadow-sheet">
+        <div class="flex justify-center pt-2">
+          <div class="w-10 h-1 bg-slate-300 rounded-full"></div>
+        </div>
+        <div class="px-4 py-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">Filters</h3>
+          <button id="close-filter" class="p-1.5 rounded-lg hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5 text-slate-700"></i></button>
+        </div>
+        <div class="px-4 pb-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Status</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20">Active</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">Churned</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">Converted</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">Lost</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">Unverified</button>
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Dealership</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button class="pill bg-brand-100 text-brand-700 ring-1 ring-brand-500/20">Hero Cycles</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">CK</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">Metro</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">States</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">KKM</button>
+              <button class="pill bg-white text-slate-700 ring-1 ring-slate-200">Akshay</button>
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Date range</div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <input type="date" class="rounded-lg border border-slate-200 px-2 py-2" />
+              <input type="date" class="rounded-lg border border-slate-200 px-2 py-2" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button class="py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-700">Reset</button>
+            <button class="py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium">Apply</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Lucide icons
+  lucide.createIcons();
+
+  // ----- Router -----
+  const SCREENS = {
+    customers:    { title: 'Customers',          sub: null,                      back: false, navKey: 'customers', showNav: true,  showFab: false },
+    leads:        { title: 'Leads',              sub: null,                      back: false, navKey: 'leads',     showNav: true,  showFab: false },
+    calls:        { title: 'Calls',              sub: null,                      back: false, navKey: 'calls',     showNav: true,  showFab: false },
+    walkins:      { title: 'Walk-ins',           sub: null,                      back: false, navKey: 'walkins',   showNav: true,  showFab: false },
+    more:         { title: 'More',               sub: null,                      back: false, navKey: 'more',      showNav: true,  showFab: false },
+    profile:      { title: 'Akash Kumar',        sub: 'High intent · Naresh N.', back: '#customers', navKey: 'customers', showNav: true,  showFab: true  },
+    // Forms (open from FAB / inline)
+    'log-call':     { title: 'Log a call',         sub: 'Akash Kumar', back: '#profile/akash-kumar', navKey: null, showNav: false, showFab: false },
+    'log-walkin':   { title: 'Log a walk-in',      sub: 'Akash Kumar', back: '#profile/akash-kumar', navKey: null, showNav: false, showFab: false },
+    'log-testride': { title: 'Log a test ride',    sub: 'Akash Kumar', back: '#profile/akash-kumar', navKey: null, showNav: false, showFab: false },
+    'log-followup': { title: 'Schedule follow-up', sub: 'Akash Kumar', back: '#profile/akash-kumar', navKey: null, showNav: false, showFab: false },
+    'log-note':     { title: 'Add note',           sub: 'Akash Kumar', back: '#profile/akash-kumar', navKey: null, showNav: false, showFab: false },
+    // Top-level destinations (linked from More + bell)
+    dashboard:    { title: 'Dashboard',           sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    dealers:      { title: 'Dealers',             sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    team:         { title: 'My sales team',       sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    lifecycle:    { title: 'Lifecycle overview',  sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    testrides:    { title: 'Test rides',          sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    'sales-list': { title: 'Sales',               sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    dispositions: { title: 'Disposition tracker', sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+    transfer:     { title: 'Transfer customer',   sub: 'Akash Kumar', back: '#profile/akash-kumar', navKey: null, showNav: false, showFab: false },
+    notifications:{ title: 'Notifications',       sub: null, back: '#customers', navKey: null, showNav: true, showFab: false },
+    settings:     { title: 'Settings',            sub: null, back: '#more', navKey: 'more', showNav: true,  showFab: false },
+  };
+
+  const screens = document.querySelectorAll('[data-screen]');
+  const appbarTitle = document.getElementById('app-title');
+  const appbarSub = document.getElementById('app-sub');
+  const backBtn = document.getElementById('back-btn');
+  const menuBtn = document.getElementById('menu-btn');
+  const bottomNav = document.querySelector('nav.flex-none');
+
+  function go(hash) {
+    const route = (hash || '#customers').replace(/^#/, '');
+    const [name] = route.split('/');
+    const cfg = SCREENS[name] || SCREENS.customers;
+
+    screens.forEach(s => s.classList.toggle('active', s.dataset.screen === name));
+
+    appbarTitle.textContent = cfg.title;
+    if (cfg.sub) { appbarSub.textContent = cfg.sub; appbarSub.classList.remove('hidden'); }
+    else { appbarSub.classList.add('hidden'); }
+
+    backBtn.classList.toggle('hidden', !cfg.back);
+    backBtn.dataset.target = cfg.back || '';
+    menuBtn.classList.toggle('hidden', !!cfg.back);
+
+    const fab = document.getElementById('fab');
+    if (fab) fab.classList.toggle('hidden', !cfg.showFab);
+    if (bottomNav) bottomNav.classList.toggle('hidden', !cfg.showNav);
+
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      const active = b.dataset.nav === cfg.navKey;
+      b.classList.toggle('text-brand-600', active);
+      b.querySelector('span').classList.toggle('font-medium', active);
+    });
+
+    const c = document.getElementById('content');
+    if (c) c.scrollTop = 0;
+  }
+
+  window.addEventListener('hashchange', () => go(location.hash));
+  go(location.hash);
+
+  backBtn.addEventListener('click', () => {
+    const target = backBtn.dataset.target;
+    if (target) location.hash = target;
+  });
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.addEventListener('click', () => { location.hash = '#' + b.dataset.nav; });
+  });
+
+  // ----- Sub-tabs (within profile) -----
+  document.querySelectorAll('#sub-tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sub-tabs button').forEach(b => {
+        b.classList.remove('tab-active'); b.classList.add('tab-inactive');
+      });
+      btn.classList.add('tab-active'); btn.classList.remove('tab-inactive');
+      const name = btn.dataset.tab;
+      document.querySelectorAll('[data-tab-panel]').forEach(p => {
+        p.classList.toggle('hidden', p.dataset.tabPanel !== name);
+      });
+    });
+  });
+
+  // ----- Event view-mode switcher -----
+  document.querySelectorAll('.event-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.event-mode-btn').forEach(b => {
+        b.classList.remove('bg-white', 'shadow-sm', 'text-slate-900');
+        b.classList.add('text-slate-600');
+      });
+      btn.classList.add('bg-white', 'shadow-sm', 'text-slate-900');
+      btn.classList.remove('text-slate-600');
+      const name = btn.dataset.mode;
+      document.querySelectorAll('[data-mode-panel]').forEach(p => {
+        p.classList.toggle('hidden', p.dataset.modePanel !== name);
+      });
+    });
+  });
+
+  // ----- Toast -----
+  const toast = document.getElementById('toast');
+  const toastMsg = document.getElementById('toast-msg');
+  let toastTimer;
+  window.showToast = function(message) {
+    toastMsg.textContent = message || 'Saved';
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+  };
+
+  // Wire all forms — show toast on submit, then go back
+  document.querySelectorAll('section[data-screen^="log-"] form').forEach(form => {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const screenName = form.closest('[data-screen]').dataset.screen;
+      const labels = {
+        'log-call': 'Call logged',
+        'log-walkin': 'Walk-in saved',
+        'log-testride': 'Test ride saved',
+        'log-followup': 'Follow-up scheduled',
+        'log-note': 'Note added',
+      };
+      showToast(labels[screenName] || 'Saved');
+      setTimeout(() => history.back(), 200);
+    });
+  });
+
+  // ----- Confirmation dialog -----
+  const dlgBackdrop = document.getElementById('dialog-backdrop');
+  const dlgCancel = document.getElementById('dialog-cancel');
+  const dlgConfirm = document.getElementById('dialog-confirm');
+  const dlgTitle = document.getElementById('dialog-title');
+  const dlgBody = document.getElementById('dialog-body');
+  let onConfirm = null;
+  window.confirmAction = function(opts) {
+    dlgTitle.textContent = opts.title;
+    dlgBody.textContent = opts.body;
+    dlgConfirm.textContent = opts.confirmLabel || 'Confirm';
+    dlgConfirm.className = 'py-2.5 rounded-xl text-white text-sm font-medium ' + (opts.danger ? 'bg-rose-600' : 'bg-brand-600');
+    onConfirm = opts.onConfirm || null;
+    dlgBackdrop.classList.add('open');
+  };
+  function closeDialog() { dlgBackdrop.classList.remove('open'); onConfirm = null; }
+  dlgCancel.addEventListener('click', closeDialog);
+  dlgBackdrop.addEventListener('click', (e) => { if (e.target === dlgBackdrop) closeDialog(); });
+  dlgConfirm.addEventListener('click', () => { const fn = onConfirm; closeDialog(); if (fn) fn(); });
+
+  // ----- Skeleton loading on Customers list (demo) -----
+  (function () {
+    const customersList = document.querySelector('[data-screen="customers"] ul');
+    if (!customersList) return;
+    const realRows = customersList.innerHTML;
+    customersList.innerHTML = Array.from({ length: 4 }).map(() => `
+      <li class="bg-white rounded-xl shadow-card p-3.5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full skeleton">.</div>
+          <div class="flex-1 space-y-1.5">
+            <div class="h-3 w-1/2 skeleton">.</div>
+            <div class="h-2.5 w-3/4 skeleton">.</div>
+          </div>
+        </div>
+        <div class="mt-3 h-2.5 w-2/5 skeleton">.</div>
+      </li>`).join('');
+    setTimeout(() => { customersList.innerHTML = realRows; lucide.createIcons(); }, 800);
+  })();
+
+  // ----- Bottom sheets (filter + log) -----
+  const filterSheet = document.getElementById('filter-sheet');
+  const logSheet = document.getElementById('log-sheet');
+  const scrim = document.getElementById('scrim');
+  function openSheet(sheetEl) {
+    [filterSheet, logSheet].forEach(s => s.classList.remove('open'));
+    sheetEl.classList.add('open');
+    scrim.classList.add('open');
+  }
+  function closeAllSheets() {
+    [filterSheet, logSheet].forEach(s => s.classList.remove('open'));
+    scrim.classList.remove('open');
+  }
+  document.getElementById('open-filter')?.addEventListener('click', () => openSheet(filterSheet));
+  document.getElementById('open-filter-events')?.addEventListener('click', () => openSheet(filterSheet));
+  document.getElementById('close-filter').addEventListener('click', closeAllSheets);
+  document.getElementById('fab').addEventListener('click', () => openSheet(logSheet));
+  document.querySelectorAll('[data-close-sheet]').forEach(b => b.addEventListener('click', closeAllSheets));
+  scrim.addEventListener('click', closeAllSheets);
+</script>
+
+</body>
+</html>
