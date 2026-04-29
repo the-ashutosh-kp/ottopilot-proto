@@ -1,0 +1,20 @@
+{
+  "name": "Ottopilot",
+  "short_name": "Ottopilot",
+  "description": "Customer + sales operations for cycle dealerships — by GrowthJockey",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#7c3aed",
+  "theme_color": "#7c3aed",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
